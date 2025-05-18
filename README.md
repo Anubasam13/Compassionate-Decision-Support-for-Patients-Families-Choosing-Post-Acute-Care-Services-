@@ -11,14 +11,16 @@ Identify and predict key cost, quality, and access factors influencing Medicare 
 - 💻 Tools: Python, R, Jupyter, RMarkdown
 
 ## 🗂️ Dataset
-**📎 Data source link**: [CMS PAC Dataset](https://data.cms.gov/provider-data/)
 
-**📘 Data Description**:  
-The dataset contains ~89,393 rows and 88 columns, including provider-level, state-level, and national-level data for various post-acute care (PAC) settings—home health, hospice, SNFs, IRFs, and LTCHs.  
-It covers:
-- Beneficiary demographics, service utilization, diagnoses
-- Medicare payments, total stays, charges, therapy minutes
-- Dual eligibility, rural classifications, and more
+- **Source**: [CMS Medicare Post-Acute Care and Hospice - by Geography & Provider](https://data.cms.gov/provider-summary-by-type-of-service/medicare-post-acute-care-hospice/medicare-post-acute-care-and-hospice-by-geography-provider)
+
+- **Description**:  
+  The dataset contains approximately 89,393 rows and 88 columns, covering provider-level, state-level, and national-level data for various PAC settings—home health, hospice, SNFs, IRFs, and LTCHs.  
+  It includes:
+  - Beneficiary demographics and service utilization
+  - Diagnoses and dual eligibility indicators
+  - Medicare charges, payments, therapy minutes
+  - Rural/urban classification and geography breakdown
 
 ## 📊 Key Findings
 - Total service days and number of beneficiaries positively impact Medicare payment.
