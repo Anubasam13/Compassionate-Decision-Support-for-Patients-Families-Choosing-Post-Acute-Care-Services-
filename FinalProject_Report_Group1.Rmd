@@ -1,0 +1,4425 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+```
+Reading the dataset and storing in cms_data variable. 
+
+```{r}
+# Get dataset dimensions
+num_rows <- nrow(cms_data)
+num_cols <- ncol(cms_data)
+
+# Create a dataframe to display dimensions
+dimension_table <- data.frame(
+  "Number_of_Rows" = num_rows,
+  "Number_of_Columns" = num_cols
+)
+
+# Print the dataframe in table format
+print(dimension_table)
+```
+
+Above code helps to find the dimensions of the dataset i.e. number of rows and number of columns.
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+
+# Check the structure of the dataset
+glimpse(cms_data)
+
+# Convert structure into a tabular format
+variable_summary <- data.frame(
+  Variable = names(cms_data),
+  Data_Type = sapply(cms_data, class),
+  Unique_Values = sapply(cms_data, function(x) length(unique(x))),
+  Missing_Values = colSums(is.na(cms_data))
+)
+
+# View summary in a tabular format
+print(variable_summary)
+
+top_10 = head(variable_summary, 10)
+print(top_10)
+```
+
+--> Above code helps to understand the structure of dataset i.e. identifying variable names, datatypes, unique values, and missing values.
+
+
+```{r}
+# Count different data types and store as a dataframe
+
+data_type_summary <- as.data.frame(table(sapply(cms_data, class)))
+
+# Rename columns
+colnames(data_type_summary) <- c("DATA TYPE", "NUMBER OF VARIABLES")
+
+# View the result
+print(data_type_summary)
+```
+
+Above code helps to visualize in tabular format regarding the data type count of variables in the dataset.
+
+```{r}
+# Load necessary library for visualization
+library(ggplot2)
+
+# Count different data types and store as a dataframe
+data_type_summary <- as.data.frame(table(sapply(cms_data, class)))
+
+# Rename columns
+colnames(data_type_summary) <- c("DATA TYPE", "NUMBER OF VARIABLES")
+
+# Create a bar graph to visualize the data types and their counts
+ggplot(data_type_summary, aes(x = reorder(`DATA TYPE`, -`NUMBER OF VARIABLES`), y = `NUMBER OF VARIABLES`)) +
+  geom_bar(stat = "identity", fill = "royalblue") +
+  geom_text(aes(label = `NUMBER OF VARIABLES`), vjust = -0.5, color = "black") +  # Add numbers above bars
+  theme_minimal() +
+  labs(x = "Data Type", y = "Number of Variables") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=14),  axis.text.y = element_text(size = 14), axis.title.x = element_text(size = 14, face = "bold"),          # X-axis title
+    axis.title.y = element_text(size = 14, face = "bold"))          # Y-axis title)
+```
+
+Above code helps to plot bar graph for the data type count of variables in the dataset.
+
+
+```{r}
+# Load necessary library
+library(dplyr)
+
+# Compute summary statistics for all numerical variables
+numeric_columns <- cms_data %>% select_if(is.numeric) %>% select(-YEAR)
+
+# Compute and display statistics
+summary_stats <- data.frame(
+  Variable = names(numeric_columns),
+  Mean = sapply(numeric_columns, mean, na.rm = TRUE),
+  Median = sapply(numeric_columns, median, na.rm = TRUE),
+  Min = sapply(numeric_columns, min, na.rm = TRUE),
+  Max = sapply(numeric_columns, max, na.rm = TRUE),
+  Range = sapply(numeric_columns, function(x) diff(range(x, na.rm = TRUE))),
+  Variance = sapply(numeric_columns, var, na.rm = TRUE),
+  Std_Dev = sapply(numeric_columns, sd, na.rm = TRUE)
+)
+
+# View summary statistics
+print(summary_stats)
+```
+
+This code gives the descriptive statistics for numeric columns.
+
+```{r}
+#####Trends in Unique Providers Utilizing PAC Services#####
+
+# Load necessary libraries  
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# Filter the data for "PROVIDER" service category
+filtered_Group1 <- filter(cms_data, SMRY_CTGRY == "PROVIDER")
+
+# Summarize the data to count the number of distinct providers (PRVDR_NAME) for each year and service category
+count_data <- filtered_Group1 %>%
+  group_by(YEAR, SRVC_CTGRY) %>%
+  summarise(provider_count = n_distinct(PRVDR_NAME), .groups = 'drop')  # Count the number of distinct providers
+
+# Check the summarized data
+print(count_data)
+
+# Create a bar plot using ggplot
+ggplot(count_data, aes(x = factor(YEAR), y = provider_count, fill = SRVC_CTGRY)) +
+  geom_col(position = "dodge") +  # Bar chart with grouped bars
+  labs(x = "Year",
+       y = "Count of Unique Providers",
+       fill = "PAC Service Type") +
+  theme_minimal() +  # Clean design
+  theme(text = element_text(size = 14),  # Bigger text for readability
+        legend.position = "right")
+```
+
+Above graph helps to visualize trends in Unique Providers Utilizing PAC Services.
+
+```{r}
+#####Count of providers by state, service category#####
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Step 1: Filter the data
+filtered_Group1 <- filter(cms_data, YEAR == "2022" & SMRY_CTGRY == "PROVIDER")
+
+# Step 2: Count the data by STATE and SRVC_CTGRY
+count_data <- filtered_Group1 %>%
+  group_by(STATE, SRVC_CTGRY) %>%
+  summarise(count = n(), .groups = 'drop')  # Count the occurrences
+
+# Step 3: Create the stacked bar chart using ggplot
+ggplot(data = count_data) +
+  geom_bar(mapping = aes(x = STATE, y = count, fill = SRVC_CTGRY), 
+           stat = "identity", position = "stack") +
+  labs(
+       x = "State",
+       y = "Count of providers")  +  # Adjust y-axis limits as needed
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+```
+
+Above graph helps to visualize count of providers by state, service category.
+
+```{r}
+# Load necessary library
+library(dplyr)
+
+# Filter for 'NATIONAL TOTAL' and select specific columns
+national_data <- filter(cms_data, STATE == "NATIONAL TOTAL") %>%
+  select(YEAR,YEAR_TYPE, SRVC_CTGRY, STATE,BENE_DSTNCT_CNT)
+
+# Display the filtered data
+print(national_data)
+```
+
+Above code helps to filter data in state columns to get only rows of National total, which helps to analyse unique beneficiary utilizing PAC services over 3 years national wide.
+
+```{r}
+library(ggplot2)
+library(scales)  # For number formatting
+
+# Assuming your dataframe is named `national_data`
+ggplot(national_data, aes(x = factor(YEAR), y = BENE_DSTNCT_CNT / 1e6, fill = SRVC_CTGRY)) +
+  geom_col(position = "dodge") +  # Bar chart with grouped bars
+  scale_y_continuous(labels = function(x) paste0(x, "M")) +  # Show values in millions
+  labs(
+       x = "Year",
+       y = "Number of Unique Beneficiaries (in Millions)",
+       fill = "PAC Service Type") +
+  theme_minimal() +  # Clean design
+  theme(text = element_text(size = 14),  # Bigger text for readability
+        legend.position = "right")
+```
+
+Above code helps to visualize trends in unique beneficiaries by service category, National level.
+
+```{r}
+#####Count of beneficiaries by state, service category#####
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Filter the data based on the given conditions
+filtered_Group1 <- filter(cms_data, YEAR == "2022" & SMRY_CTGRY == "PROVIDER")
+
+# Check the data type of BENE_DSTNCT_CNT and convert to numeric if necessary
+filtered_Group1$BENE_DSTNCT_CNT <- as.numeric(filtered_Group1$BENE_DSTNCT_CNT)
+
+# Check if any conversion created NA values due to non-numeric entries
+if(any(is.na(filtered_Group1$BENE_DSTNCT_CNT))) {
+  print("Warning: Some BENE_DSTNCT_CNT values could not be converted to numeric.")
+}
+
+# Summarize the sum of BENE_DSTNCT_CNT by STATE and SRVC_CTGRY (service category), scaled to thousands
+sum_data <- filtered_Group1 %>%
+  group_by(STATE, SRVC_CTGRY) %>%
+  summarise(total_persons = sum(BENE_DSTNCT_CNT, na.rm = TRUE) / 1000, .groups = 'drop')  # Divide by 1000 to scale to thousands
+
+# View the summarized data
+print(sum_data)
+
+# Create a stacked bar chart using ggplot2 with x-axis labels rotated by 45 degrees
+ggplot(data = sum_data) +
+  geom_bar(mapping = aes(x = STATE, y = total_persons, fill = SRVC_CTGRY), 
+           stat = "identity", position = "stack") +  # Stack the bars by service category
+  labs(
+       x = "State",
+       y = "Sum of Beneficiaries in Thousands") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels by 45 degrees
+```
+
+Above code helps to visualize count of beneficiaries by state, service category.
+
+```{r}
+#####Average Medicare Payment Amount to provider by service category#####
+# Load dplyr package
+library(dplyr)
+
+# Filter data for YEAR 2022 and SMRY_CTGRY "PROVIDER"
+filtered_Group1 <- filter(cms_data, YEAR == "2022" & SMRY_CTGRY == "PROVIDER")
+
+# Convert TOT_CHRG_AMT to numeric if it's not already
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(as.character(filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+# Calculate the average (mean) of TOT_CHRG_AMT
+average_data <- mean(filtered_Group1$TOT_MDCR_PYMT_AMT, na.rm = TRUE)
+print(average_data)
+
+# Calculate the average of TOT_CHRG_AMT by SRVC_CTGRY (grouped by service category)
+avg_by_srvc <- filtered_Group1 %>%
+  group_by(SRVC_CTGRY) %>%
+  summarise(avg_cost = mean(TOT_MDCR_PYMT_AMT, na.rm = TRUE))
+
+# Divide avg_cost by 1,000,000 to represent it in millions
+avg_by_srvc$avg_cost_in_millions <- avg_by_srvc$avg_cost / 1e6
+
+# Create the bar plot with scaled values in millions
+barplot(avg_by_srvc$avg_cost_in_millions,
+        names.arg = avg_by_srvc$SRVC_CTGRY,
+        #main = "Average Medicare Payment Amount to Provider by Service Category (2022)",
+        xlab = "Service Category",
+        ylab = "Average Medicare Payment Amount (in millions)",
+        col = "red4",
+        border = FALSE)
+```
+
+Above code helps to visualize average Medicare payment amount to provider by service category.
+
+```{r}
+#####Average Medicare payment amount per beneficiary by service category #####
+# Load necessary libraries 
+library(dplyr)
+
+# Clean and convert TOT_MDCR_PYMT_AMT and BENE_DSTNCT_CNT to numeric (if needed)
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+filtered_Group1$BENE_DSTNCT_CNT <- as.numeric(gsub("[^0-9]", "", filtered_Group1$BENE_DSTNCT_CNT))
+
+# Calculate the total cost and total persons per service category
+avg_cost_per_person <- filtered_Group1 %>%
+  group_by(SRVC_CTGRY) %>%  # Group by service category
+  summarise(
+    total_cost = sum(TOT_MDCR_PYMT_AMT, na.rm = TRUE),  # Sum of total charges
+    total_persons = sum(BENE_DSTNCT_CNT, na.rm = TRUE),  # Sum of persons
+    avg_cost_per_person = total_cost / total_persons  # Average cost per person
+  )
+
+# Convert the total cost and avg cost per person to thousands
+avg_cost_per_person$avg_cost_per_person_thousands <- avg_cost_per_person$avg_cost_per_person / 1000
+
+# Create a bar plot with the values in thousands
+barplot(
+  avg_cost_per_person$avg_cost_per_person_thousands,  # Heights of the bars (average cost in thousands)
+  names.arg = avg_cost_per_person$SRVC_CTGRY,  # Labels for each bar (service categories)
+  #main = "Average Medicare Payment Amount per Beneficiary by Service Category (2022)",  # Title of the plot
+  xlab = "Service Category",  # X-axis label
+  ylab = "Average Medicare Payment Per Beneficiary (in thousands)",  # Y-axis label
+  col = "blue",  # Bar color
+  border = FALSE,
+  ylim = c(0,50))  # No border around bars
+```
+
+Above code helps to visualize Average Medicare payment amount per beneficiary by service category.
+
+```{r}
+#####Distribution of nursing visits per beneficiary by service category #####
+# Load necessary libraries 
+library(dplyr)
+library(ggplot2)
+
+# Filter the data based on your conditions
+filtered_Group1 <- filter(cms_data, YEAR == "2022" & SMRY_CTGRY == "PROVIDER")
+
+# Remove rows where NRSNG_VISITS_CNT is "*", replace non-numeric characters with NA
+filtered_Group1 <- filtered_Group1 %>%
+  filter(NRSNG_VISITS_CNT != "*") %>%  # Remove rows with "*"
+  mutate(
+    NRSNG_VISITS_CNT = as.numeric(NRSNG_VISITS_CNT),  # Ensure it's numeric
+    BENE_DSTNCT_CNT = as.numeric(BENE_DSTNCT_CNT)  # Ensure it's numeric
+  )
+
+# Check for any NAs or non-finite values
+summary(filtered_Group1$NRSNG_VISITS_CNT)
+summary(filtered_Group1$BENE_DSTNCT_CNT)
+
+# Remove rows with NA or non-finite values (optional, based on your needs)
+filtered_Group1 <- filtered_Group1 %>%
+  filter(!is.na(NRSNG_VISITS_CNT) & is.finite(NRSNG_VISITS_CNT) & BENE_DSTNCT_CNT > 0)  # Ensure valid persons and visits
+
+# Calculate nursing visits per person, handling division correctly (check for zero or NA in BENE_DSTNCT_CNT)
+filtered_Group1 <- filtered_Group1 %>%
+  mutate(
+    NRSNG_VISITS_PER_PERSON = ifelse(BENE_DSTNCT_CNT > 0, NRSNG_VISITS_CNT / BENE_DSTNCT_CNT, NA)  # Avoid division by zero
+  )
+
+# Check for any NAs in the new column
+summary(filtered_Group1$NRSNG_VISITS_PER_PERSON)
+
+# Create a summary table (for NRSNG_VISITS_PER_PERSON)
+sum_data <- filtered_Group1 %>%
+  group_by(SRVC_CTGRY) %>%
+  summarise(avg_visits_per_person = mean(NRSNG_VISITS_PER_PERSON, na.rm = TRUE))  # Average visits per person
+
+print(sum_data)
+
+# boxplot with base R
+boxplot(filtered_Group1$NRSNG_VISITS_PER_PERSON ~ filtered_Group1$SRVC_CTGRY, 
+       # main = "Nursing Visits per Beneficiary by Service Category (2022)",
+        ylab = "Nursing Visits per Beneficiary",
+        xlab = "Service Category",
+        border = "royalblue")
+
+```
+
+Above code helps to visualize box plot on Distribution of nursing visits per beneficiary by service category.
+
+```{r}
+#####Distribution of physical therapy minutes per beneficiary by service category#####
+# Load necessary libraries (Plot #12 Boxplot of Total Physical Therapy min per person)
+library(dplyr)
+library(ggplot2)
+
+# Filter the data based on your conditions
+filtered_Group1 <- filter(cms_data, YEAR == "2022" & SMRY_CTGRY == "PROVIDER")
+
+# Remove rows where TOT_PT_MNTS is "*", replace non-numeric characters with NA
+filtered_Group1 <- filtered_Group1 %>%
+  filter(TOT_PT_MNTS != "*") %>%  # Remove rows with "*"
+  mutate(TOT_PT_MNTS = as.numeric(TOT_PT_MNTS),  # Convert to numeric
+         BENE_DSTNCT_CNT = as.numeric(BENE_DSTNCT_CNT))  # Ensure BENE_DSTNCT_CNT is numeric
+
+# Remove rows with NA or non-finite values (optional, based on your needs)
+filtered_Group1 <- filtered_Group1 %>%
+  filter(!is.na(TOT_PT_MNTS) & is.finite(TOT_PT_MNTS) & BENE_DSTNCT_CNT > 0)  # Avoid zero or NA for beneficiaries
+
+# Calculate Total Physical Therapy Minutes per Person
+filtered_Group1 <- filtered_Group1 %>%
+  mutate(TOT_PT_MNTS_PER_PERSON = TOT_PT_MNTS / BENE_DSTNCT_CNT)
+
+# Check for any NAs in the new column
+summary(filtered_Group1$TOT_PT_MNTS_PER_PERSON)
+
+# Create a summary table (distribution of TOT_PT_MNTS_PER_PERSON)
+sum_data <- table(filtered_Group1$TOT_PT_MNTS_PER_PERSON)
+print(sum_data)
+
+# Create a base R boxplot
+boxplot(filtered_Group1$TOT_PT_MNTS_PER_PERSON ~ filtered_Group1$SRVC_CTGRY, 
+        #main = "Total Physical Therapy Minutes per Beneficiary by Service Category (2022)",
+        ylab = "Total Physical Therapy Minutes per Beneficiary",
+        xlab = "Service Category",
+        border = "royalblue")
+```
+
+Above code helps to visualize box plot on Distribution of physical therapy minutes per beneficiary by service category.
+
+```{r}
+#Filter out the national and state counts
+cms_data_nat_sta_ni <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+#filtering only national level data
+cms_data_nat_only<-filter(cms_data, SMRY_CTGRY == "NATION")
+max_value <- max(cms_data_nat_sta_ni$BENE_DSTNCT_CNT, na.rm = TRUE)
+print(max_value)
+```
+
+Above code helps to filters out the national and state counts and considering only national level data.
+
+```{r}
+#Create a boxplot for distinct beneficiary count
+#Number of unique Medicare beneficiaries with at least one paid claim in the calendar or fiscal year
+boxplot(BENE_DSTNCT_CNT ~ YEAR, 
+        data= cms_data_nat_sta_ni,
+        #main = "Boxplot for Distinct Beneficiary Count", 
+        ylab = "Distinct Beneficiaries Count", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        ylim = c(0, 5000))
+```
+
+Above code helps to create a box plot for distinct beneficiary count.
+
+```{r}
+#Create boxplot for total stay count
+#For home health, this is the total count of 60-day episodes in the CY.
+#For hospice, SNF, IRF, and LTCH this is the total count of stays provided in the fiscal year.
+boxplot(TOT_EPSD_STAY_CNT ~ YEAR, 
+        data= cms_data_nat_sta_ni,
+        #main = "Episode or Stay Count", 
+        ylab = "Count", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        cex.axis=2,
+        ylim =c(0,10000))
+```
+
+Above code helps to create a box plot for total stay count.
+
+```{r}
+#Create boxplot for TOT_SRVC_DAYS
+#Total count of covered days delivered by a provider in the calendar or fiscal year.
+options(scipen = 999)# to ignore the exponential values
+boxplot(TOT_SRVC_DAYS~YEAR, 
+        data= cms_data_nat_sta_ni,
+        #main = "Days of Service", 
+        ylab = "Days", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        ylim = c(0,100000))
+```
+
+Above code helps to create a box plot for total service days.
+
+```{r}
+#Create boxplot for total amount charged by provider, only national level totals were considered.
+
+options(scipen = 999)
+boxplot(TOT_CHRG_AMT~YEAR, 
+        data = cms_data_nat_only,
+        #main = "Total Charge Amount", 
+        ylab = "Amount charged", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5)
+```
+
+Above code helps to create a box plot for total amount charged by provider, only national level totals were considered.
+
+```{r}
+#Create boxplot for total amount allowed by medicare
+
+boxplot(TOT_ALOWD_AMT~ YEAR,
+        data=cms_data_nat_sta_ni,
+       #main = "Total Amount Allowed by Medicare", 
+        ylab = "Total Allowed Amount", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        ylim=c(0,10000000))
+```
+
+Above code helps to create a box plot for total amount allowed by medicare.
+
+```{r}
+#Create boxplot for total medicare payment amount
+#total amount allowed by Medicare
+
+boxplot(TOT_MDCR_PYMT_AMT~ YEAR, 
+        data=cms_data_nat_sta_ni,
+        #main = "Total Medicare payment Amount", 
+        ylab = "Amount", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        ylim=c(0,10000000))
+```
+
+Above code helps to create a box plot for total medicare payment amount.
+
+```{r}
+#Create boxplot for total standard payment amount
+#total amount allowed by Medicare
+
+boxplot(TOT_MDCR_STDZD_PYMT_AMT~YEAR, 
+        data=cms_data_nat_sta_ni,
+        #main = "Total Medicare standard payment", 
+        ylab = "Amount", 
+        col = "royalblue",
+        cex.lab = 1.5,
+        cex.axis=1.5,
+        cex.main=1.5,
+        ylim=c(0,10000000))
+```
+
+Above code helps to create a box plot for total standard payment amount.
+
+```{r}
+##Total Medicare Payment amount and service category.
+
+#Service Category and Total Medicare Payment Amount (National Totals)
+
+ggplot(cms_data_nat_only, aes(x = SRVC_CTGRY, y = TOT_MDCR_PYMT_AMT, fill = factor(YEAR))) +
+  geom_col(position = "dodge") +  # Bar chart with grouped bars by year
+  labs(
+       x = "Service Category",
+    y = "Total Medicare Payment Amount",
+    fill = "Year"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 15, hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(angle = 90, size = 14),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size=16)
+)
+```
+
+Above code helps to visualize a scatter plot to demonstrate relationship between service category and total medicare payment amount, group by year.
+
+```{r}
+# Following code chunk from 25 to 28  helps to convert age into a categorical variable and plot a graph to see which age group is served more.
+ 
+```
+
+```{r}
+# Convert 'BENE_AVG_AGE' into categorical age groups
+#WORKING
+cms_data_nat_sta_ni <- cms_data_nat_sta_ni %>%
+  mutate(BENE_AVG_AGE_GRP = case_when(
+    BENE_AVG_AGE >= 41 & BENE_AVG_AGE <= 50 ~ "41-50",
+    BENE_AVG_AGE >= 51 & BENE_AVG_AGE <= 60 ~ "51-60",
+    BENE_AVG_AGE >= 61 & BENE_AVG_AGE <= 65 ~ "61-65",
+    BENE_AVG_AGE >= 66 & BENE_AVG_AGE <= 70 ~ "66-70",
+    BENE_AVG_AGE >= 71 & BENE_AVG_AGE <= 75 ~ "71-75",
+    BENE_AVG_AGE >= 76 & BENE_AVG_AGE <= 80 ~ "76-80",
+    BENE_AVG_AGE >= 81 & BENE_AVG_AGE <= 85 ~ "81-85",
+    BENE_AVG_AGE >= 86 & BENE_AVG_AGE <= 90 ~ "86-90",
+    BENE_AVG_AGE > 91 ~ "90+",
+    TRUE ~ "Unknown"  # This is a fallback in case there are any missing or invalid age values
+  ))
+```
+
+```{r}
+# Display unique values in the 'BENE_AVG_AGE_GRP' column
+unique(cms_data_nat_sta_ni$BENE_AVG_AGE_GRP)
+
+# Count the number of people in each age group and service category
+age_group_usage <- cms_data_nat_sta_ni %>%
+  group_by(BENE_AVG_AGE_GRP, SRVC_CTGRY) %>%
+  summarise(total_usage = n(), .groups = 'drop') %>%
+  arrange(desc(total_usage))  # Order by total usage, from highest to lowest
+```
+
+```{r}
+# View the results
+print(age_group_usage)
+# Display results 
+ggplot(age_group_usage, aes(x = reorder(BENE_AVG_AGE_GRP, -total_usage), y = total_usage, fill=SRVC_CTGRY)) +
+  geom_bar(stat = "identity",  color = "darkblue") +# Removed static fill, now filled by facility
+  labs(#title = "PAC facility Usage by Age Group",
+       x = "Age Group",
+       y = "Total Facility Usage") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),             # Rotate x-axis labels for better visibility
+        axis.text.y = element_text(size = 14),                         # Increase y-axis label font size
+        axis.title.x = element_text(size = 16),                        # Increase x-axis title font size
+        axis.title.y = element_text(size = 16),                        # Increase y-axis title font size
+        plot.title = element_text(size = 20, hjust = 0.5),              # Increase plot title size and center it
+      
+  ) 
+```
+
+Above code chunks from 25 to 28 helps to convert age into a categorical variable and plot a graph to see which age group is served more.
+
+```{r}
+# Next code chunks from 29 to 37 helps to find correlation between listed variables "TOT_NRSNG_MNTS", "TOT_PT_MNTS", "INDVDL_PT_MNTS", "CNCRNT_GRP_PT_MNTS", "COTRT_PT_MNTS", "TOT_OT_MNTS", "INDVDL_OT_MNTS", "CNCRNT_GRP_OT_MNTS", "COTRT_OT_MNTS", "TOT_SLP_MNTS", "INDVDL_SLP_MNTS", "CNCRNT_GRP_SLP_MNTS", "COTRT_SLP_MNTS", "HOSPC_RHC_DAYS_PCT", "TOT_HH_LUPA_EPSDS_CNT" and, "TOT_MDCR_PYMT_AMT"
+```
+
+```{r}
+# Define a function to clean non-numeric values (replace special characters with NA)
+
+# Apply the function to all relevant columns that should be numeric
+clean_special_characters <- function(x) {
+  # Convert to character first
+  x <- as.character(x)  
+  # Replace non-numeric characters (including special characters) with NA
+  x[grepl("[^0-9.]", x)] <- NA
+  # Convert the cleaned data back to numeric
+  return(as.numeric(x)) 
+}
+# excluding the 10 variables with no values and plotting correlation between the 5 variables and TOT_MDCR_PYMT_AMT
+```
+
+Excluding the 10 variables with no values and plotting correlation between the 5 variables and TOT_MDCR_PYMT_AMT.
+
+```{r}
+# Specify the columns to clean
+columns_to_clean <- c("TOT_NRSNG_MNTS", 
+                      "TOT_PT_MNTS", 
+                      "TOT_OT_MNTS", 
+                      "TOT_SLP_MNTS", 
+                      "TOT_HH_LUPA_EPSDS_CNT")
+```
+
+```{r}
+# Clean the selected columns
+cms_data_nat_sta_ni[columns_to_clean] <- lapply(cms_data_nat_sta_ni[columns_to_clean], clean_special_characters)
+
+# Replace NAs with the column mean (ignoring NAs when calculating the mean)
+cms_data_nat_sta_ni <- cms_data_nat_sta_ni %>%
+  mutate(across(all_of(columns_to_clean), ~ replace(., is.na(.), mean(., na.rm = TRUE))))
+```
+
+```{r}
+# Now your columns are cleaned, and special characters have been replaced by the column mean.
+## to check for any missing rows or special characters in TOT_MDCR_PYMT_AMT column
+# Convert the column TOT_MDCR_PYMT_AMT to numeric
+cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT <- as.numeric(cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT)
+```
+
+```{r}
+# Check for missing values in the column
+missing_values <- sum(is.na(cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT))
+
+# Print the number of missing values
+print(paste("Number of missing values in TOT_MDCR_PYMT_AMT:", missing_values))
+
+# Optionally, view rows with missing values
+missing_rows <- cms_data_nat_sta_ni[is.na(cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT), ]
+print(missing_rows)
+```
+
+```{r}
+# Convert relevant columns to numeric (in case they are not already)
+cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT <- as.numeric(cms_data_nat_sta_ni$TOT_MDCR_PYMT_AMT)
+cms_data_nat_sta_ni$TOT_NRSNG_MNTS <- as.numeric(cms_data_nat_sta_ni$TOT_NRSNG_MNTS)
+cms_data_nat_sta_ni$TOT_PT_MNTS <- as.numeric(cms_data_nat_sta_ni$TOT_PT_MNTS)
+cms_data_nat_sta_ni$TOT_OT_MNTS <- as.numeric(cms_data_nat_sta_ni$TOT_OT_MNTS)
+cms_data_nat_sta_ni$TOT_SLP_MNTS <- as.numeric(cms_data_nat_sta_ni$TOT_SLP_MNTS)
+cms_data_nat_sta_ni$TOT_HH_LUPA_EPSDS_CNT <- as.numeric(cms_data_nat_sta_ni$TOT_HH_LUPA_EPSDS_CNT)
+```
+
+```{r}
+# Select the columns of interest
+columns_of_interest <- c("TOT_MDCR_PYMT_AMT", 
+                         "TOT_NRSNG_MNTS", 
+                         "TOT_PT_MNTS", 
+                         "TOT_OT_MNTS", 
+                         "TOT_SLP_MNTS", 
+                         "TOT_HH_LUPA_EPSDS_CNT")
+# Subset the data with the selected columns
+subset_data <- cms_data_nat_sta_ni[columns_of_interest]
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(subset_data, use = "complete.obs")
+
+# Print the correlation matrix
+print(correlation_matrix)
+```
+
+```{r}
+library(corrplot)
+# Plot the correlation matrix using corrplot
+corrplot(correlation_matrix, method = "color", 
+         col = colorRampPalette(c("blue", "white", "red"))(200), 
+         type = "full", 
+         addCoef.col = "black", # Adds correlation coefficients on the plot
+         tl.col = "black", # Color of text labels
+         tl.srt = 45, # Rotate text labels
+        # main = "Correlation Matrix Heatmap", # Set the main title
+         cex.main = 2, # Adjust title size
+         col.main = "black", # Adjust title color
+         line.main = 0.5) # Adjust vertical position of the title
+
+```
+
+Above code from code chunks from 29 to 37 helps to find correlation between listed variables "TOT_NRSNG_MNTS", "TOT_PT_MNTS", "INDVDL_PT_MNTS", "CNCRNT_GRP_PT_MNTS", "COTRT_PT_MNTS", "TOT_OT_MNTS", "INDVDL_OT_MNTS", "CNCRNT_GRP_OT_MNTS", "COTRT_OT_MNTS", "TOT_SLP_MNTS", "INDVDL_SLP_MNTS", "CNCRNT_GRP_SLP_MNTS", "COTRT_SLP_MNTS", "HOSPC_RHC_DAYS_PCT", "TOT_HH_LUPA_EPSDS_CNT" and, "TOT_MDCR_PYMT_AMT.
+
+Excluding the 10 variables with no values and plotting correlation between the 5 variables and TOT_MDCR_PYMT_AMT.
+
+##### For the above 15 variables we used principal component analysis to check the relationship between variables. However, we were not able to perform PCA analysis as the row counts were very less when N/As were removed, replacing data with mean would skew up the data and results.Please find below code we use to for PCA analysis on 15 variables.
+
+####PCA Start
+# PCA for column 74 thru column 88
+# PCA results were inconclusive, as 
+## List of columns to convert to numeric
+pca_var <- c("TOT_NRSNG_MNTS", "TOT_PT_MNTS", "INDVDL_PT_MNTS", 
+             "CNCRNT_GRP_PT_MNTS", "COTRT_PT_MNTS", "TOT_OT_MNTS", 
+             "INDVDL_OT_MNTS", "CNCRNT_GRP_OT_MNTS", "COTRT_OT_MNTS", 
+             "TOT_SLP_MNTS", "INDVDL_SLP_MNTS", "CNCRNT_GRP_SLP_MNTS", 
+             "COTRT_SLP_MNTS", "HOSPC_RHC_DAYS_PCT", "TOT_HH_LUPA_EPSDS_CNT")
+# Remove rows with any NAs in the specified columns
+clean_pca<-cms_data_nat_sta_ni[complete.cases(cms_data_nat_sta_ni[pca_var]),]
+# Convert the specified columns to numeric
+clean_pca[pca_var]<- lapply(clean_pca[pca_var], function(x) as.numeric(as.character(x)))
+# Check the structure of the cleaned dataset
+str(clean_pca)
+# Verify the first few rows to check conversion
+head(clean_pca[, pca_var])
+#Conversion to numeric ends
+#omit N/As
+data_for_pca <- cms_data_nat_sta_ni[, pca_var]# Extract the relevant columns from CMS_Data
+# Remove rows with any NAs in the selected columns
+data_for_pca_clean <- na.omit(data_for_pca)
+# Scale the data (standardize to have mean=0 and std=1)
+data_for_pca_scaled <- scale(data_for_pca_clean)
+# Perform PCA
+pca_result <- prcomp(data_for_pca_scaled, center = TRUE, scale. = TRUE)# Resulted in an error which indicates that 
+#one or more columns in your dataset have constant or zero variance, which means all the values in that column are identical
+# Check the variance of each column
+variances <- apply(data_for_pca_scaled, 2, var)
+# Identify columns with zero variance
+zero_variance_columns <- names(variances[variances == 0])
+# Print the columns with zero variance
+zero_variance_columns
+# Check for missing values in the columns used for PCA
+colSums(is.na(data_for_pca_scaled))
+# Remove rows with NA values in the selected PCA columns
+data_for_pca_scaled_cleaned <- data_for_pca_scaled[complete.cases(data_for_pca_scaled), ]
+
+# Check for missing values again after cleaning
+colSums(is.na(data_for_pca_scaled_cleaned))
+# Recalculate the variance for each column after handling NAs
+variances <- apply(data_for_pca_scaled_cleaned, 2, var)
+
+# Identify columns with zero variance
+zero_variance_columns <- names(variances[variances == 0])
+
+# Print columns with zero variance
+zero_variance_columns
+# Remove columns with zero variance
+data_for_pca_scaled_cleaned <- data_for_pca_scaled_cleaned[, !(names(data_for_pca_scaled_cleaned) %in% zero_variance_columns)]
+
+# Perform PCA again
+pca_result <- prcomp(data_for_pca_scaled_cleaned, center = TRUE, scale. = TRUE)
+
+# Check PCA summary
+summary(pca_result)
+nrow(data_for_pca_scaled)  # Before cleaning
+nrow(data_for_pca_scaled_cleaned)  # After cleaning
+
+### PCA END
+
+
+```{r}
+#####Plot for correlation b/w TOT Medicare payment amount & Nursing Visits#####
+
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$NRSNG_VISITS_CNT))  # Check NRSNG_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$NRSNG_VISITS_CNT))  # Check for non-numeric in NRSNG_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# numeric datatype
+
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$NRSNG_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$NRSNG_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$NRSNG_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+
+filtered_Group1$NRSNG_VISITS_CNT <- filtered_Group1$NRSNG_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$NRSNG_VISITS_CNT, 
+  #main = "Scatter plot between NRSNG_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "NRSNG_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19, # Point shape (19 is a filled circle)
+)
+```
+
+Above code helps to visualize correlation between Total Medicare payment amount & Nursing Visits.
+
+```{r}
+#Scatterplot without  outliers#
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$NRSNG_VISITS_CNT))  # Check NRSNG_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$NRSNG_VISITS_CNT))  # Check for non-numeric in NRSNG_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$NRSNG_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$NRSNG_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$NRSNG_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+# Convert NRSNG_VISITS_CNT and TOT_MDCR_PYMT_AMT to millions
+filtered_Group1$NRSNG_VISITS_CNT <- filtered_Group1$NRSNG_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+# Filter data to exclude NRSNG_VISITS_CNT greater than 0.4 million
+filtered_Group1 <- filtered_Group1 %>%
+  filter(NRSNG_VISITS_CNT <= 0.4)
+
+# Plot the data
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$NRSNG_VISITS_CNT, 
+  #main = "Scatter plot between NRSNG_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "NRSNG_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19       # Point shape (19 is a filled circle)
+)
+```
+
+Above code helps to visualize Scatterplot without  outliers between total medicare payment amount and nursing visits count.
+
+```{r}
+#####Plot for correlation b/w TOT Medicare payment amount & MSW_VISITS_CNT#####
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$MSW_VISITS_CNT))  # Check NRSNG_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$MSW_VISITS_CNT))  # Check for non-numeric in NRSNG_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$MSW_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$MSW_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$MSW_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+filtered_Group1$MSW_VISITS_CNT <- filtered_Group1$MSW_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$MSW_VISITS_CNT, 
+  #main = "Scatter plot between MSW_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "MSW_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19       # Point shape (19 is a filled circle)
+)
+```
+
+Above code helps to visualize correlation between Total Medicare payment amount & Social Work Visit Count.
+
+```{r}
+#Scatterplot w/o  outliers#
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$MSW_VISITS_CNT))  # Check MSW_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$MSW_VISITS_CNT))  # Check for non-numeric in MSW_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$MSW_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$MSW_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$MSW_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+# Convert MSW_VISITS_CNT and TOT_MDCR_PYMT_AMT to millions
+filtered_Group1$MSW_VISITS_CNT <- filtered_Group1$MSW_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+# Filter data to exclude MSW_VISITS_CNT greater than 0.05 million
+filtered_Group1 <- filtered_Group1 %>%
+  filter(MSW_VISITS_CNT <= 0.05)
+
+# Plot the data
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$MSW_VISITS_CNT, 
+  #main = "Scatter plot between MSW_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "MSW_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19       # Point shape (19 is a filled circle)
+)
+```
+
+Above code helps to visualize Scatterplot without  outliers between total medicare payment amount and Social Work Visit Count.
+
+
+```{r}
+#####Plot for correlation b/w TOT Medicare payment amount & AIDE_VISITS_CNT#####
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$AIDE_VISITS_CNT))  # Check NRSNG_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$AIDE_VISITS_CNT))  # Check for non-numeric in NRSNG_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$AIDE_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$AIDE_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$AIDE_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+filtered_Group1$AIDE_VISITS_CNT <- filtered_Group1$AIDE_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$AIDE_VISITS_CNT, 
+  #main = "Scatter plot between AIDE_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "AIDE_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19)       # Point shape (19 is a filled circle)
+```
+
+Above code helps to visualize correlation b/w Ttal Medicare payment amount & AIDE_VISITS_CNT(Home Health Aide Visit Count).
+
+```{r}
+#Scatterplot w/o  outliers#
+
+# Correct filtering logic for both "HH" and "HOS" in SRVC_CTGRY
+filtered_Group1 <- cms_data %>%
+  filter(SMRY_CTGRY == "PROVIDER" & SRVC_CTGRY %in% c("HH", "HOS"))
+
+# Check for NA values
+sum(is.na(filtered_Group1$AIDE_VISITS_CNT))  # Check AIDE_VISITS_CNT for NA values
+sum(is.na(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check TOT_MDCR_PYMT_AMT for NA values
+
+# Check for non-numeric values
+sum(!is.numeric(filtered_Group1$AIDE_VISITS_CNT))  # Check for non-numeric in AIDE_VISITS_CNT
+sum(!is.numeric(filtered_Group1$TOT_MDCR_PYMT_AMT))  # Check for non-numeric in TOT_MDCR_PYMT_AMT
+
+# Replace "*" and "N/A" with NA and convert columns to numeric
+filtered_Group1$AIDE_VISITS_CNT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$AIDE_VISITS_CNT))
+filtered_Group1$TOT_MDCR_PYMT_AMT <- as.numeric(gsub("[^0-9.-]", "", filtered_Group1$TOT_MDCR_PYMT_AMT))
+
+  
+# Remove rows with NA values in either of the columns
+filtered_Group1 <- filtered_Group1[complete.cases(filtered_Group1$AIDE_VISITS_CNT, filtered_Group1$TOT_MDCR_PYMT_AMT), ]
+
+# Convert to millions
+filtered_Group1$AIDE_VISITS_CNT <- filtered_Group1$AIDE_VISITS_CNT / 1e6
+filtered_Group1$TOT_MDCR_PYMT_AMT <- filtered_Group1$TOT_MDCR_PYMT_AMT / 1e6
+
+# Filter out rows where AIDE_VISITS_CNT is greater than 0.3 million
+filtered_Group1 <- filtered_Group1 %>%
+  filter(AIDE_VISITS_CNT <= 0.3)
+
+# Plot the data with filtered values
+plot(
+  filtered_Group1$TOT_MDCR_PYMT_AMT ~ filtered_Group1$AIDE_VISITS_CNT, 
+  #main = "Scatter plot between AIDE_VISITS_CNT and TOT_MDCR_PYMT_AMT (in millions)",
+  xlab = "AIDE_VISITS_CNT (in millions)",
+  ylab = "TOT_MDCR_PYMT_AMT (in millions)",
+  col = "blue",  # Color of the points
+  pch = 19)       # Point shape (19 is a filled circle)
+```
+
+
+Above code helps to visualize Scatterplot without outliers between total medicare payment amount and Home Health Aide Visit Count.
+
+###PCA Analysis for Chronic condition variables from data dictionary variable count 31 to 55
+
+```{r}
+#####PCA analysis#####
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+
+# Step 1: Exclude rows where SRVC_CTGRY is "HOS"
+Group1_filtered <- cms_data %>%
+  filter(SRVC_CTGRY != "HOS")
+```
+
+```{r}
+# Step 2: Select specific columns for PCA (numeric columns only)
+Group1_selected <- Group1_filtered %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+```
+
+```{r}
+# Step 3: Convert 'character' columns to numeric, handling "N/A" and "*" as NA
+Group1_selected_clean <- Group1_selected %>%
+  mutate(across(everything(), ~ as.numeric(replace(replace(., . == "N/A", NA), . == "*", NA))))
+```
+
+```{r}
+# Step 4: Check the data types of the selected columns again
+sapply(Group1_selected_clean, class)
+
+```
+
+```{r}
+# Step 5: Remove columns with zero variance (if any)
+Group1_selected_clean <- Group1_selected_clean %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+```
+
+```{r}
+# Step 6: Replace missing values (NA) and "*" with the mean of the respective column
+Group1_selected_clean <- Group1_selected_clean %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+```
+
+```{r}
+# Step 7: Check if there are any missing values (should be 0 now)
+sum(is.na(Group1_selected_clean))  # Ensure no missing values
+
+```
+
+```{r}
+# Step 8: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_selected_clean, center = TRUE, scale. = TRUE)
+```
+
+```{r}
+# Step 9: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+scores <- pca_result1$x
+
+```
+
+```{r}
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+```
+
+
+```{r}
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+```
+
+```{r}
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+        names.arg = paste0("PC", 1:25), 
+        las = 2, 
+        col = "steelblue", 
+        #main = "Scree Plot of PCA",
+        xlab = "Principal Components",
+        ylab = "Percentage of Variance Explained",
+        ylim = c(0, 30))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+```
+
+```{r}
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+    #ggtitle("Contribution of Variables to PC1") # For PC1
+```
+
+Above is the PCA analysis for variables 31 to 55 count taken from the data dictionary.
+
+```{r}
+
+
+
+# Example: vector of short names for top 10 variables
+short_labels <- c(
+  "Hypertension", "Diabetes", "Depression", "HeartFail",
+  "COPD", "Alzheimer", "Stroke", "Cancer", "Asthma", "Osteo"
+)
+
+# Plot with shortened x-axis labels
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10) +
+  scale_x_discrete(labels = short_labels) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+  #ggtitle("Top 10 Variable Contributions to PC1")
+
+```
+
+
+###PCA Analysis for primary diagnosis variables from data dictionary variable count 56 to 70
+
+```{r}
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- cms_data[, 56:70]
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result1 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result1)
+
+#screeplot visualization
+
+fviz_eig(pca_result1, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  #ggtitle("Scree plot of PCA")
+    xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 15)+
+  #ggtitle("Contribution of Variables to PC1") 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+```
+
+Above is the PCA analysis for variables 56 to 70 count taken from the data dictionary.
+
+#Modelling code starts here##
+
+## The following code includes running PCA for chrnic condition variables, primary diagnosis variables. 
+## Output from PCA componets is considered for exhaustive analysis along with other variables which contribute in predicting the cost for post-acute care facilities.
+
+## Linear regression and Elastic regression models are used for predicting the cost
+
+## We also analyzed how the predicted cost varies across five service categories- HH, HOS, IRF, SNF, LTC
+
+##Clean the data
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Step 1: Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+
+# Step 2: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+# Step 3: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered %>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS,
+         TOT_HH_LUPA_EPSDS_CNT,
+         HOSPC_RHC_DAYS_PCT)
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_CHRG_AMT)
+summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+
+##=======================================================
+##PCA for chronic condition from data dictionary variable count 31 to 55
+
+# Step 4: Select specific columns for PCA (numeric columns only)
+Group1_cleaned_selected <- Group1_cleaned %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+
+# Step 5: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_cleaned_selected, center = TRUE, scale. = TRUE)
+
+# Step 6: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+pca_scores_B <- pca_result1$x
+
+
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+                           names.arg = paste0("PC", 1:25), 
+                           las = 2, 
+                           col = "steelblue", 
+                           main = "Scree Plot of PCA",
+                           xlab = "Principal Components",
+                           ylab = "Percentage of Variance Explained",
+                           ylim = c(0, 70))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+  ggtitle("Contribution of Variables to PC1") # For PC1
+
+# X axis Label rename
+# Create the plot and store it
+p <- fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)
+
+# Manually assign new names (must match the order of x-axis)
+new_labels <- c("Mood", "Depress", "Hyperlipidemia", "Heart disease", "Ischemic heart",
+                "Anxiety", "Kidney disease", "Arthritis", "Diabetes", "COPD")
+
+# Apply custom labels
+p + scale_x_discrete(labels = new_labels) +
+  theme(axis.text.x = element_text(angle = 50, hjust = 1, size = 13),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("")
+
+
+##=======================================================
+## Step 7: PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned %>%
+  select(PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+# X axis Label rename
+# Create and store the plot first
+p <- fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15) +
+  ggtitle("") +
+  theme(axis.text.x = element_text(size = 12, angle = 50, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+# Custom x-axis labels (15 labels for top 15 variables)
+new_labels <- c("Circsystem", "InjuryPoisning", "Nervous system", "Special factors", "Neoplasms", 
+                "Infections", "Genitournary", "Skin disease", "Digestive system",
+                "Mental disorders", "Abnormal", "Endocrine", "Resp system", "EyeEar", "Pregnancy" )
+
+# Add new x-axis labels
+p + scale_x_discrete(labels = new_labels)
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Chronic condition) + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 7: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned %>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS,
+         TOT_HH_LUPA_EPSDS_CNT,
+         HOSPC_RHC_DAYS_PCT)
+
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_B <- as.data.frame(pca_scores_B)
+
+colnames(pca_scores_B)
+
+# Rename the column name
+pca_scores_B <- pca_scores_B %>%
+  rename(
+    PC1_B = PC1,   PC2_B = PC2,   PC3_B = PC3,   PC4_B = PC4,   PC5_B = PC5,
+    PC6_B = PC6,   PC7_B = PC7,   PC8_B = PC8,   PC9_B = PC9,   PC10_B = PC10,
+    PC11_B = PC11, PC12_B = PC12, PC13_B = PC13, PC14_B = PC14, PC15_B = PC15,
+    PC16_B = PC16, PC17_B = PC17, PC18_B = PC18, PC19_B = PC19, PC20_B = PC20,
+    PC21_B = PC21, PC22_B = PC22, PC23_B = PC23, PC24_B = PC24, PC25_B = PC25
+  )
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+pca_subset1 <- pca_scores_B[, c("PC1_B", "PC2_B", "PC3_B", "PC4_B")]
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset1, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(TOT_MDCR_PYMT_AMT ~ ., data = Group1_with_pca, method = "exhaustive", really.big = TRUE)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+##Linear Regression
+## sample() function
+test_vec <- -1000:1000
+sample(test_vec,10,replace=FALSE)
+
+#### DATA PARTITION
+## I decided to divide the dataset as 60% training and 40% validation.
+## First we calculate the size of the training set given the size 
+## of the full dataset
+train_size <- 0.6 * nrow(Group1_with_pca)
+
+## Since we will partition our data randomly, use set.seed to ensure
+## that you get the same training and validation datasets every time
+set.seed(1)
+
+
+## Using sample() function, we generate
+## random integers, each represent a row index. Selected rows 
+## will be used in the training set and the rest will be used in the
+## test set. Replace is false because we do not want the same row to 
+## be selected twice.
+train_index <- sample(x = 1:nrow(Group1_with_pca), size = train_size, replace = F)
+
+## Finally, we partition our dataset into two based on the selected row 
+## numbers
+train_set <- Group1_with_pca[train_index, ]
+valid_set <- Group1_with_pca[-train_index, ]
+
+
+##================================================================
+#### FITTING A LINEAR REGRESSION MODEL
+## The function lm() calculates the fitted linear regression model
+## by minimizing the mean squared error.
+## The first argument of the function is formula in which you 
+## specify the target variable and the predictor variable using
+## the column names. 
+## The second argument is called data and it is the name of the 
+## dataframe that includes the dataset you want to use.
+## We always use the training set to fit our linear regression
+## line.
+
+
+## If you decide to add multiple predictor variables, you still
+## use the function lm(). You add all predictive variables
+## you want to include to the formula by separating them with
+## plus signs as below:
+
+
+model2 <- lm(TOT_MDCR_PYMT_AMT ~ BENE_DSTNCT_CNT + TOT_SRVC_DAYS + NRSNG_VISITS_CNT + MSW_VISITS_CNT + TOT_PT_MNTS + TOT_OT_MNTS + TOT_HH_LUPA_EPSDS_CNT + PC1_B, train_set)
+
+
+##================================================================
+#### INTERPRETING INDIVIDUAL PREDICTORS
+## To see the fitted coefficient values and their p-values,
+## you use summary() function.
+
+summary(model2)
+
+## The following command will avoid scientific notation for numbers.
+options(scipen=999) 
+
+##================================================================
+#### MAKING PREDICTIONS USING THE FITTED MODEL
+## Let's use the second model we fit to predict the prices of the
+## cars in the validation dataset.
+
+## For prediction, we use a function called predict(). There are
+## two arguments, first one is called object, it is the name of 
+## the linear regression model you want to use for prediction.
+## Second one is called newdata, it is the dataset that
+## includes the observations whose prices will be predicted.
+
+pred_price2 <- predict(object = model2, newdata = valid_set)
+##================================================================
+#### EVALUATING PREDICTIVE PERFORMANCE
+## Function accuracy() from a package called forecast calculates 
+## multiple prediction accuracy measures. There are
+## two arguments, first one is predicted prices and the second 
+## argument is the actual prices.
+install.packages('forecast') #if you have not
+library(forecast)
+
+accuracy(pred_price2, valid_set$TOT_MDCR_PYMT_AMT)
+
+## Calculating prediction errors for each model and describe the errors
+## using histograms
+
+error_model2 <- valid_set$TOT_MDCR_PYMT_AMT - pred_price2
+##================================================================
+#### EVALUATING OVERFITTING BEHAVIOR
+## We already calculated the predictive performance for 
+## validation set
+accuracy(pred_price2, valid_set$TOT_MDCR_PYMT_AMT)
+
+## Now, we calculate the predictive performance for training set
+pred_price_train2 <- predict(object = model2, newdata = train_set)
+accuracy(pred_price_train2, train_set$TOT_MDCR_PYMT_AMT)
+
+################################
+### Elastic Net Regression -Using the same variables as linear regression
+###############################
+
+# Load the glmnet package
+install.packages("glmnet")
+library(glmnet)
+install.packages("Metrics")
+library(Metrics)
+install.packages("caret")
+library(caret)
+
+################################
+### Elastic Net Regression -Using the same variables as linear regression
+###############################
+
+# Load the glmnet package
+set.seed(1)  # for reproducibility
+sample_indices <- sample(1:nrow(Group1_with_pca), 0.6 * nrow(Group1_with_pca))
+
+train_data <- Group1_with_pca[sample_indices, ]
+test_data  <- Group1_with_pca[-sample_indices, ]
+
+# Define the predictor variables
+predictors <- c("BENE_DSTNCT_CNT", "TOT_SRVC_DAYS", "NRSNG_VISITS_CNT", "MSW_VISITS_CNT",
+                "TOT_PT_MNTS", "TOT_OT_MNTS", "TOT_HH_LUPA_EPSDS_CNT", "PC1_B")
+# Prepare training data
+x_train <- as.matrix(train_data[, predictors])
+y_train <- train_data$TOT_MDCR_PYMT_AMT
+
+# Prepare test data
+x_test <- as.matrix(test_data[, predictors])
+y_test <- test_data$TOT_MDCR_PYMT_AMT
+# Fit model
+cv_model <- cv.glmnet(x_train, y_train, alpha = 0.5)
+best_lambda <- cv_model$lambda.min
+
+final_model <- glmnet(x_train, y_train, alpha = 0.5, lambda = best_lambda)
+
+# Generate predictions on the test set
+predictions <- predict(final_model, s = best_lambda, newx = x_test)
+
+# Compute metrics using y_test and predictions
+me_val <- mean(y_test - predictions)
+
+# View coefficients
+coef(final_model)
+# Calculate metrics
+
+me_val <- mean(y_test - predictions)
+mpe_val <- mean((y_test - predictions) / y_test) * 100
+mape_val <- mean(abs((y_test - predictions) / y_test)) * 100
+mse_val <- mse(y_test, predictions)
+rmse_val <- rmse(y_test, predictions)
+mae_val <- mae(y_test, predictions)
+r2_val <- 1 - sum((y_test - predictions)^2) / sum((y_test - mean(y_test))^2)
+# Create a performance table
+performance_table <- data.frame(
+  Metric = c("MSE", "RMSE", "MAE", "R-squared", "ME", "MPE", "MAPE"),
+  Value = c(mse_val, rmse_val, mae_val, r2_val, me_val, mpe_val, mape_val)
+)
+
+# Print the table
+print(performance_table)
+
+
+
+### From here we see the analysis for each service category- HH, HOS, IRF, SNF, LTC
+
+
+##Clean the data for HH service category 
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+# Step 3: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+# Step 2: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered %>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS,
+         TOT_HH_LUPA_EPSDS_CNT)
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_MDCR_PYMT_AMT)
+summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+##=========================================================================================
+## handling outliers 
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1_cleaned is already created and contains your cleaned data
+
+# Step 1: Identify Outliers using Z-scores
+# Calculate Z-scores for the relevant numeric columns
+z_scores <- scale(Group1_cleaned)
+
+# Identify outliers (Z-score > 3 or < -3)
+outliers <- abs(z_scores) > 3
+
+# Step 2: Visualize Outliers with Boxplots
+# Create boxplots for key variables to visualize outliers
+ggplot(Group1_cleaned, aes(y = TOT_MDCR_PYMT_AMT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Total Medicare Payment Amount", y = "Total Medicare Payment Amount")
+
+ggplot(Group1_cleaned, aes(y = BENE_CC_BH_ANXIETY_V1_PCT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Anxiety Percentage", y = "Anxiety Percentage")
+
+# Step 3: Handle Outliers
+# Option 1: Remove Outliers
+# Create a cleaned dataset without outliers
+####Group1_cleaned_no_outliers <- Group1_cleaned[!rowSums(outliers), ]
+
+# Option 2: Cap Outliers
+# Calculate the 1st and 99th percentiles
+lower_bound <- apply(Group1_cleaned, 2, quantile, 0.01)
+upper_bound <- apply(Group1_cleaned, 2, quantile, 0.99)
+
+# Cap the outliers
+Group1_cleaned_capped <- Group1_cleaned
+for (i in 1:ncol(Group1_cleaned)) {
+  Group1_cleaned_capped[[i]] <- pmin(pmax(Group1_cleaned[[i]], lower_bound[i]), upper_bound[i])
+}
+
+# Option 3: Transform Outliers
+# Apply log transformation to reduce the impact of outliers
+####Group1_cleaned_transformed <- Group1_cleaned
+####Group1_cleaned_transformed$TOT_MDCR_PYMT_AMT <- log1p(Group1_cleaned$TOT_MDCR_PYMT_AMT)  # log(1 + x) to handle zero values
+
+# Step 4: Check the structure of the cleaned dataset
+####str(Group1_cleaned_no_outliers)  # If you removed outliers
+# or
+str(Group1_cleaned_capped)  # If you capped outliers
+# or
+####str(Group1_cleaned_transformed)  # If you transformed 
+##=======================================================
+##PCA for chronic condition from data dictionary variable count 31 to 55
+
+# Step 2: Select specific columns for PCA (numeric columns only)
+Group1_cleaned_selected <- Group1_cleaned_capped %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+
+# Step 8: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_cleaned_selected, center = TRUE, scale. = TRUE)
+
+# Step 9: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+pca_scores_B <- pca_result1$x
+
+
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+                           names.arg = paste0("PC", 1:25), 
+                           las = 2, 
+                           col = "steelblue", 
+                           main = "Scree Plot of PCA",
+                           xlab = "Principal Components",
+                           ylab = "Percentage of Variance Explained",
+                           ylim = c(0, 70))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+  ggtitle("Contribution of Variables to PC1") # For PC1
+
+
+##=======================================================
+##PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned_capped[, 33:47]
+View(pd_data1)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Chronic condition) + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 2: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned_capped%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS,
+         TOT_HH_LUPA_EPSDS_CNT)
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_B <- as.data.frame(pca_scores_B)
+
+colnames(pca_scores_B)
+
+# Rename the column name
+pca_scores_B <- pca_scores_B %>%
+  rename(
+    PC1_B = PC1,   PC2_B = PC2,   PC3_B = PC3,   PC4_B = PC4,   PC5_B = PC5,
+    PC6_B = PC6,   PC7_B = PC7,   PC8_B = PC8,   PC9_B = PC9,   PC10_B = PC10,
+    PC11_B = PC11, PC12_B = PC12, PC13_B = PC13, PC14_B = PC14, PC15_B = PC15,
+    PC16_B = PC16, PC17_B = PC17, PC18_B = PC18, PC19_B = PC19, PC20_B = PC20,
+    PC21_B = PC21, PC22_B = PC22, PC23_B = PC23, PC24_B = PC24, PC25_B = PC25
+  )
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+pca_subset1 <- pca_scores_B[, c("PC1_B", "PC2_B", "PC3_B", "PC4_B")]
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset1, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+Group1_with_pca$SRVC_CTGRY <- cms_data_filtered$SRVC_CTGRY
+
+Group1_with_pca$SRVC_CTGRY <- as.factor(Group1_with_pca$SRVC_CTGRY)
+
+##For filtering service category, run this command!!!
+filtered_Group1_with_pca <- Group1_with_pca %>%
+  filter(SRVC_CTGRY == "HH")
+
+filtered_no_srvc <- filtered_Group1_with_pca %>%
+  select(-SRVC_CTGRY)
+##filtered_no_srvc <- Group1_with_pca
+
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(
+  TOT_MDCR_PYMT_AMT ~ .,
+  data = filtered_no_srvc,
+  method = "exhaustive",
+  really.big = TRUE
+)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get list of Adj_R2 and AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+# Load necessary libraries
+library(dplyr)
+
+# Step 1: Identify the best model based on adjusted R-squared
+best_model_index <- which.max(model_eval$Adj_R2)  # Get the index of the best model
+best_model_vars <- names(which(models_matrix[best_model_index, -1]))  # Get variable names
+
+# Step 2: Create a formula for the linear regression model
+formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(best_model_vars, collapse = " + "))
+linear_model <- lm(as.formula(formula_str), data = filtered_no_srvc)
+
+# Step 3: Summary of the Linear Regression Model
+summary(linear_model)
+
+# Step 4: Split the data into training and testing sets
+set.seed(1)  # For reproducibility
+train_indices <- sample(1:nrow(filtered_no_srvc), size = 0.7 * nrow(filtered_no_srvc))  # 70% for training
+train_data <- filtered_no_srvc[train_indices, ]
+test_data <- filtered_no_srvc[-train_indices, ]
+
+# Step 5: Fit the linear regression model using the training data
+linear_model_train <- lm(as.formula(formula_str), data = train_data)
+
+# Step 6: Make predictions on the training data
+train_predictions <- predict(linear_model_train, newdata = train_data)
+
+# Step 7: Make predictions on the test data
+test_predictions <- predict(linear_model_train, newdata = test_data)
+
+# Step 8: Evaluate the model's performance on the training set
+# Calculate RMSE for Training Set
+rmse_train <- sqrt(mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2))
+
+# Calculate MAE for Training Set
+mae_train <- mean(abs(train_data$TOT_MDCR_PYMT_AMT - train_predictions))
+
+# Calculate MSE for Training Set
+mse_train <- mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2)
+
+# Calculate R-squared for Training Set
+r_squared_train <- 1 - (sum((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2) / 
+                          sum((train_data$TOT_MDCR_PYMT_AMT - mean(train_data$TOT_MDCR_PYMT_AMT))^2))
+
+# Step 9: Evaluate the model's performance on the test set
+# Calculate RMSE for Test Set
+rmse_test <- sqrt(mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2))
+
+# Calculate MAE for Test Set
+mae_test <- mean(abs(test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+# Calculate MSE for Test Set
+mse_test <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2)
+
+#Calculate ME For Test Set
+me_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+#Calculate MPE for Test Set
+mpe_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT) * 100
+
+#Calculate MAPE for Test set
+mape_val <- mean(abs((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT)) * 100
+
+
+# Calculate R-squared for Test Set
+r_squared_test <- 1 - (sum((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2) / 
+                         sum((test_data$TOT_MDCR_PYMT_AMT - mean(test_data$TOT_MDCR_PYMT_AMT))^2))
+
+## Calculate Adjusted R-squared for Test Set
+n_test <- nrow(test_data)  # Number of observations in the test set
+p_test <- length(coef(linear_model_train)) - 1  # Number of predictors (subtracting 1 for the intercept)
+
+adj_r_squared_test <- 1 - (1 - r_squared_test) * ((n_test - 1) / (n_test - p_test - 1))
+
+
+# Step 10: Print the evaluation metrics
+cat("Training Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_train, "\n")
+cat("Mean Absolute Error (MAE):", mae_train, "\n")
+cat("Mean Squared Error (MSE):", mse_train, "\n")
+cat("R-squared:", r_squared_train, "\n\n")
+
+cat("Test Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_test, "\n")
+cat("Mean Absolute Error (MAE):", mae_test, "\n")
+cat("Mean Squared Error (MSE):", mse_test, "\n")
+cat("R-squared:", r_squared_test, "\n")
+cat("Adjusted R-squared:", adj_r_squared_test, "\n")  
+cat("ME:", me_val, "\n")
+cat("mpe_val:", mpe_val, "\n")
+cat("mape_val:", mape_val, "\n")
+
+
+
+# Step 11: Diagnostic plots for the linear model
+par(mfrow = c(2, 2))  # Set up the plotting area
+plot(linear_model_train)  # Diagnostic plots for the linear model
+#****************************************************************************************************************************
+#*********************************************************************************************************************************
+##### for HOS SERVICE PROVIDER #####
+#Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+# Step 3: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+
+# Step 2: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered %>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         HOSPC_RHC_DAYS_PCT)
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_MDCR_PYMT_AMT)
+#summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+##=========================================================================================
+## handling outliers 
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1_cleaned is already created and contains your cleaned data
+
+# Step 1: Identify Outliers using Z-scores
+# Calculate Z-scores for the relevant numeric columns
+z_scores <- scale(Group1_cleaned)
+
+# Identify outliers (Z-score > 3 or < -3)
+outliers <- abs(z_scores) > 3
+
+# Step 2: Visualize Outliers with Boxplots
+# Create boxplots for key variables to visualize outliers
+ggplot(Group1_cleaned, aes(y = TOT_MDCR_PYMT_AMT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Total Medicare Payment Amount", y = "Total Medicare Payment Amount")
+
+
+# Step 3: Handle Outliers
+# Option 1: Remove Outliers
+# Create a cleaned dataset without outliers
+####Group1_cleaned_no_outliers <- Group1_cleaned[!rowSums(outliers), ]
+
+# Option 2: Cap Outliers
+# Calculate the 1st and 99th percentiles
+lower_bound <- apply(Group1_cleaned, 2, quantile, 0.01)
+upper_bound <- apply(Group1_cleaned, 2, quantile, 0.99)
+
+# Cap the outliers
+Group1_cleaned_capped <- Group1_cleaned
+for (i in 1:ncol(Group1_cleaned)) {
+  Group1_cleaned_capped[[i]] <- pmin(pmax(Group1_cleaned[[i]], lower_bound[i]), upper_bound[i])
+}
+
+# Option 3: Transform Outliers
+# Apply log transformation to reduce the impact of outliers
+####Group1_cleaned_transformed <- Group1_cleaned
+####Group1_cleaned_transformed$TOT_MDCR_PYMT_AMT <- log1p(Group1_cleaned$TOT_MDCR_PYMT_AMT)  # log(1 + x) to handle zero values
+
+# Step 4: Check the structure of the cleaned dataset
+####str(Group1_cleaned_no_outliers)  # If you removed outliers
+# or
+str(Group1_cleaned_capped)  # If you capped outliers
+# or
+####str(Group1_cleaned_transformed)  # If you transformed 
+##=======================================================
+View(Group1_cleaned_capped)
+##PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned_capped[, 8:22]
+View(pd_data1)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 2: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned_capped%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         NRSNG_VISITS_CNT,
+         MSW_VISITS_CNT,
+         AIDE_VISITS_CNT,
+         TOT_NRSNG_MNTS,
+         HOSPC_RHC_DAYS_PCT)
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+Group1_with_pca$SRVC_CTGRY <- cms_data_filtered$SRVC_CTGRY
+
+Group1_with_pca$SRVC_CTGRY <- as.factor(Group1_with_pca$SRVC_CTGRY)
+
+##For filtering service category, run this command!!!
+filtered_Group1_with_pca <- Group1_with_pca %>%
+  filter(SRVC_CTGRY == "HOS")
+
+filtered_no_srvc <- filtered_Group1_with_pca %>%
+  select(-SRVC_CTGRY)
+#filtered_no_srvc <- Group1_with_pca
+
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(
+  TOT_MDCR_PYMT_AMT ~ .,
+  data = filtered_no_srvc,
+  method = "exhaustive",
+  really.big = TRUE
+)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get list of Adj_R2 and AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+# Load necessary libraries
+library(dplyr)
+
+# Step 1: Identify the best model based on adjusted R-squared
+best_model_index <- which.max(model_eval$Adj_R2)  # Get the index of the best model
+best_model_vars <- names(which(models_matrix[best_model_index, -1]))  # Get variable names
+
+# Step 2: Create a formula for the linear regression model
+formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(best_model_vars, collapse = " + "))
+linear_model <- lm(as.formula(formula_str), data = filtered_no_srvc)
+
+# Step 3: Summary of the Linear Regression Model
+summary(linear_model)
+
+# Step 4: Split the data into training and testing sets
+set.seed(1)  # For reproducibility
+train_indices <- sample(1:nrow(filtered_no_srvc), size = 0.7 * nrow(filtered_no_srvc))  # 70% for training
+train_data <- filtered_no_srvc[train_indices, ]
+test_data <- filtered_no_srvc[-train_indices, ]
+
+# Step 5: Fit the linear regression model using the training data
+linear_model_train <- lm(as.formula(formula_str), data = train_data)
+
+# Step 6: Make predictions on the training data
+train_predictions <- predict(linear_model_train, newdata = train_data)
+
+# Step 7: Make predictions on the test data
+test_predictions <- predict(linear_model_train, newdata = test_data)
+
+# Step 8: Evaluate the model's performance on the training set
+# Calculate RMSE for Training Set
+rmse_train <- sqrt(mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2))
+
+# Calculate MAE for Training Set
+mae_train <- mean(abs(train_data$TOT_MDCR_PYMT_AMT - train_predictions))
+
+# Calculate MSE for Training Set
+mse_train <- mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2)
+
+# Calculate R-squared for Training Set
+r_squared_train <- 1 - (sum((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2) / 
+                          sum((train_data$TOT_MDCR_PYMT_AMT - mean(train_data$TOT_MDCR_PYMT_AMT))^2))
+
+# Step 9: Evaluate the model's performance on the test set
+# Calculate RMSE for Test Set
+rmse_test <- sqrt(mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2))
+
+# Calculate MAE for Test Set
+mae_test <- mean(abs(test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+# Calculate MSE for Test Set
+mse_test <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2)
+
+#Calculate ME For Test Set
+me_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+#Calculate MPE for Test Set
+mpe_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT) * 100
+
+#Calculate MAPE for Test set
+mape_val <- mean(abs((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT)) * 100
+
+# Calculate R-squared for Test Set
+r_squared_test <- 1 - (sum((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2) / 
+                         sum((test_data$TOT_MDCR_PYMT_AMT - mean(test_data$TOT_MDCR_PYMT_AMT))^2)) 
+## Calculate Adjusted R-squared for Test Set
+n_test <- nrow(test_data)  # Number of observations in the test set
+p_test <- length(coef(linear_model_train)) - 1  # Number of predictors (subtracting 1 for the intercept)
+
+adj_r_squared_test <- 1 - (1 - r_squared_test) * ((n_test - 1) / (n_test - p_test - 1))
+
+
+# Step 10: Print the evaluation metrics
+cat("Training Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_train, "\n")
+cat("Mean Absolute Error (MAE):", mae_train, "\n")
+cat("Mean Squared Error (MSE):", mse_train, "\n")
+cat("R-squared:", r_squared_train, "\n\n")
+
+cat("Test Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_test, "\n")
+cat("Mean Absolute Error (MAE):", mae_test, "\n")
+cat("Mean Squared Error (MSE):", mse_test, "\n")
+cat("R-squared:", r_squared_test, "\n")
+cat("Adjusted R-squared:", adj_r_squared_test, "\n")  
+cat("ME:", me_val, "\n")
+cat("mpe_val:", mpe_val, "\n")
+cat("mape_val:", mape_val, "\n")
+
+# Step 11: Diagnostic plots for the linear model
+par(mfrow = c(2, 2))  # Set up the plotting area
+plot(linear_model_train)  # Diagnostic plots for the linear model
+#****************************************************************************************************************************************
+#*************************************************************************************************************************************************
+##FOR  SNF SERVICE CATEGORY ####
+##=======================================================
+##Clean the data
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+# Step 3: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+# Step 2: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT
+         
+  )
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_MDCR_PYMT_AMT)
+summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+##=========================================================================================
+## handling outliers 
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1_cleaned is already created and contains your cleaned data
+
+# Step 1: Identify Outliers using Z-scores
+# Calculate Z-scores for the relevant numeric columns
+z_scores <- scale(Group1_cleaned)
+
+# Identify outliers (Z-score > 3 or < -3)
+outliers <- abs(z_scores) > 3
+
+# Step 2: Visualize Outliers with Boxplots
+# Create boxplots for key variables to visualize outliers
+ggplot(Group1_cleaned, aes(y = TOT_MDCR_PYMT_AMT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Total Medicare Payment Amount", y = "Total Medicare Payment Amount")
+
+ggplot(Group1_cleaned, aes(y = BENE_CC_BH_ANXIETY_V1_PCT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Anxiety Percentage", y = "Anxiety Percentage")
+
+# Step 3: Handle Outliers
+# Option 1: Remove Outliers
+# Create a cleaned dataset without outliers
+####Group1_cleaned_no_outliers <- Group1_cleaned[!rowSums(outliers), ]
+
+# Option 2: Cap Outliers
+# Calculate the 1st and 99th percentiles
+lower_bound <- apply(Group1_cleaned, 2, quantile, 0.01)
+upper_bound <- apply(Group1_cleaned, 2, quantile, 0.99)
+
+# Cap the outliers
+Group1_cleaned_capped <- Group1_cleaned
+for (i in 1:ncol(Group1_cleaned)) {
+  Group1_cleaned_capped[[i]] <- pmin(pmax(Group1_cleaned[[i]], lower_bound[i]), upper_bound[i])
+}
+
+# Option 3: Transform Outliers
+# Apply log transformation to reduce the impact of outliers
+####Group1_cleaned_transformed <- Group1_cleaned
+####Group1_cleaned_transformed$TOT_MDCR_PYMT_AMT <- log1p(Group1_cleaned$TOT_MDCR_PYMT_AMT)  # log(1 + x) to handle zero values
+
+# Step 4: Check the structure of the cleaned dataset
+####str(Group1_cleaned_no_outliers)  # If you removed outliers
+# or
+str(Group1_cleaned_capped)  # If you capped outliers
+# or
+####str(Group1_cleaned_transformed)  # If you transformed 
+##=======================================================
+##PCA for chronic condition from data dictionary variable count 31 to 55
+
+# Step 2: Select specific columns for PCA (numeric columns only)
+Group1_cleaned_selected <- Group1_cleaned_capped %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+
+# Step 8: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_cleaned_selected, center = TRUE, scale. = TRUE)
+
+# Step 9: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+pca_scores_B <- pca_result1$x
+
+
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+                           names.arg = paste0("PC", 1:25), 
+                           las = 2, 
+                           col = "steelblue", 
+                           main = "Scree Plot of PCA",
+                           xlab = "Principal Components",
+                           ylab = "Percentage of Variance Explained",
+                           ylim = c(0, 70))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+  ggtitle("Contribution of Variables to PC1") # For PC1
+
+
+##=======================================================
+##PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+View(Group1_cleaned_capped)
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned_capped[, 33:47]
+View(pd_data1)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Chronic condition) + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 2: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned_capped%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE
+         
+  )
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_B <- as.data.frame(pca_scores_B)
+
+colnames(pca_scores_B)
+
+# Rename the column name
+pca_scores_B <- pca_scores_B %>%
+  rename(
+    PC1_B = PC1,   PC2_B = PC2,   PC3_B = PC3,   PC4_B = PC4,   PC5_B = PC5,
+    PC6_B = PC6,   PC7_B = PC7,   PC8_B = PC8,   PC9_B = PC9,   PC10_B = PC10,
+    PC11_B = PC11, PC12_B = PC12, PC13_B = PC13, PC14_B = PC14, PC15_B = PC15,
+    PC16_B = PC16, PC17_B = PC17, PC18_B = PC18, PC19_B = PC19, PC20_B = PC20,
+    PC21_B = PC21, PC22_B = PC22, PC23_B = PC23, PC24_B = PC24, PC25_B = PC25
+  )
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+pca_subset1 <- pca_scores_B[, c("PC1_B", "PC2_B", "PC3_B", "PC4_B")]
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset1, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+Group1_with_pca$SRVC_CTGRY <- cms_data_filtered$SRVC_CTGRY
+
+Group1_with_pca$SRVC_CTGRY <- as.factor(Group1_with_pca$SRVC_CTGRY)
+
+##For filtering service category, run this command!!!
+filtered_Group1_with_pca <- Group1_with_pca %>%
+  filter(SRVC_CTGRY == "SNF")
+
+filtered_no_srvc <- filtered_Group1_with_pca %>%
+  select(-SRVC_CTGRY)
+##filtered_no_srvc <- Group1_with_pca
+####checking missing values and rectify ############
+# Check for missing values
+missing_values <- sum(is.na(filtered_no_srvc))
+if (missing_values > 0) {
+  print(paste("There are", missing_values, "missing values in the dataset."))
+}
+
+# Check the structure of the data
+str(filtered_no_srvc)
+
+# Check for correlations
+correlations <- cor(filtered_no_srvc)
+print(correlations)
+
+# Identify linear dependencies (if using caret package)
+# install.packages("caret") # Uncomment if caret is not installed
+library(caret)
+linear_combos <- findLinearCombos(as.data.frame(filtered_no_srvc))
+print(linear_combos)
+
+# Remove problematic variables if necessary
+# filtered_no_srvc <- filtered_no_srvc[, -c(index_of_problematic_variable)]
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(
+  TOT_MDCR_PYMT_AMT ~ .,
+  data = filtered_no_srvc,
+  method = "exhaustive",
+  really.big = TRUE
+)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get list of Adj_R2 and AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+# Load necessary libraries
+library(dplyr)
+
+# Step 1: Identify the best model based on adjusted R-squared
+best_model_index <- which.max(model_eval$Adj_R2)  # Get the index of the best model
+best_model_vars <- names(which(models_matrix[best_model_index, -1]))  # Get variable names
+
+# Step 2: Create a formula for the linear regression model
+formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(best_model_vars, collapse = " + "))
+linear_model <- lm(as.formula(formula_str), data = filtered_no_srvc)
+
+# Step 3: Summary of the Linear Regression Model
+summary(linear_model)
+
+# Step 4: Split the data into training and testing sets
+set.seed(1)  # For reproducibility
+train_indices <- sample(1:nrow(filtered_no_srvc), size = 0.7 * nrow(filtered_no_srvc))  # 70% for training
+train_data <- filtered_no_srvc[train_indices, ]
+test_data <- filtered_no_srvc[-train_indices, ]
+
+# Step 5: Fit the linear regression model using the training data
+linear_model_train <- lm(as.formula(formula_str), data = train_data)
+
+# Step 6: Make predictions on the training data
+train_predictions <- predict(linear_model_train, newdata = train_data)
+
+# Step 7: Make predictions on the test data
+test_predictions <- predict(linear_model_train, newdata = test_data)
+
+# Step 8: Evaluate the model's performance on the training set
+# Calculate RMSE for Training Set
+rmse_train <- sqrt(mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2))
+
+# Calculate MAE for Training Set
+mae_train <- mean(abs(train_data$TOT_MDCR_PYMT_AMT - train_predictions))
+
+# Calculate MSE for Training Set
+mse_train <- mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2)
+
+# Calculate R-squared for Training Set
+r_squared_train <- 1 - (sum((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2) / 
+                          sum((train_data$TOT_MDCR_PYMT_AMT - mean(train_data$TOT_MDCR_PYMT_AMT))^2))
+
+# Step 9: Evaluate the model's performance on the test set
+# Calculate RMSE for Test Set
+rmse_test <- sqrt(mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2))
+
+# Calculate MAE for Test Set
+mae_test <- mean(abs(test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+# Calculate MSE for Test Set
+mse_test <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2)
+
+#Calculate ME For Test Set
+me_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+#Calculate MPE for Test Set
+mpe_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT) * 100
+
+#Calculate MAPE for Test set
+mape_val <- mean(abs((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT)) * 100
+
+
+# Calculate R-squared for Test Set
+r_squared_test <- 1 - (sum((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2) / 
+                         sum((test_data$TOT_MDCR_PYMT_AMT - mean(test_data$TOT_MDCR_PYMT_AMT))^2))
+
+## Calculate Adjusted R-squared for Test Set
+n_test <- nrow(test_data)  # Number of observations in the test set
+p_test <- length(coef(linear_model_train)) - 1  # Number of predictors (subtracting 1 for the intercept)
+
+adj_r_squared_test <- 1 - (1 - r_squared_test) * ((n_test - 1) / (n_test - p_test - 1))
+
+
+# Step 10: Print the evaluation metrics
+cat("Training Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_train, "\n")
+cat("Mean Absolute Error (MAE):", mae_train, "\n")
+cat("Mean Squared Error (MSE):", mse_train, "\n")
+cat("R-squared:", r_squared_train, "\n\n")
+
+cat("Test Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_test, "\n")
+cat("Mean Absolute Error (MAE):", mae_test, "\n")
+cat("Mean Squared Error (MSE):", mse_test, "\n")
+cat("R-squared:", r_squared_test, "\n")
+cat("Adjusted R-squared:", adj_r_squared_test, "\n")  
+cat("ME:", me_val, "\n")
+cat("mpe_val:", mpe_val, "\n")
+cat("mape_val:", mape_val, "\n")
+
+# Step 11: Diagnostic plots for the linear model
+par(mfrow = c(2, 2))  # Set up the plotting area
+plot(linear_model_train)  # Diagnostic plots for the linear model
+#**********************************************************************************************************************
+###FOR LTC SERVICE CATEGORY 
+##=======================================================
+##Clean the data
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+# Step 3: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+# Step 2: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT
+         
+  )
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_MDCR_PYMT_AMT)
+summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+##=========================================================================================
+## handling outliers 
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1_cleaned is already created and contains your cleaned data
+
+# Step 1: Identify Outliers using Z-scores
+# Calculate Z-scores for the relevant numeric columns
+z_scores <- scale(Group1_cleaned)
+
+# Identify outliers (Z-score > 3 or < -3)
+outliers <- abs(z_scores) > 3
+
+# Step 2: Visualize Outliers with Boxplots
+# Create boxplots for key variables to visualize outliers
+ggplot(Group1_cleaned, aes(y = TOT_MDCR_PYMT_AMT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Total Medicare Payment Amount", y = "Total Medicare Payment Amount")
+
+ggplot(Group1_cleaned, aes(y = BENE_CC_BH_ANXIETY_V1_PCT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Anxiety Percentage", y = "Anxiety Percentage")
+
+# Step 3: Handle Outliers
+# Option 1: Remove Outliers
+# Create a cleaned dataset without outliers
+####Group1_cleaned_no_outliers <- Group1_cleaned[!rowSums(outliers), ]
+
+# Option 2: Cap Outliers
+# Calculate the 1st and 99th percentiles
+lower_bound <- apply(Group1_cleaned, 2, quantile, 0.01)
+upper_bound <- apply(Group1_cleaned, 2, quantile, 0.99)
+
+# Cap the outliers
+Group1_cleaned_capped <- Group1_cleaned
+for (i in 1:ncol(Group1_cleaned)) {
+  Group1_cleaned_capped[[i]] <- pmin(pmax(Group1_cleaned[[i]], lower_bound[i]), upper_bound[i])
+}
+
+# Option 3: Transform Outliers
+# Apply log transformation to reduce the impact of outliers
+####Group1_cleaned_transformed <- Group1_cleaned
+####Group1_cleaned_transformed$TOT_MDCR_PYMT_AMT <- log1p(Group1_cleaned$TOT_MDCR_PYMT_AMT)  # log(1 + x) to handle zero values
+
+# Step 4: Check the structure of the cleaned dataset
+####str(Group1_cleaned_no_outliers)  # If you removed outliers
+# or
+str(Group1_cleaned_capped)  # If you capped outliers
+# or
+####str(Group1_cleaned_transformed)  # If you transformed 
+##=======================================================
+##PCA for chronic condition from data dictionary variable count 31 to 55
+
+# Step 2: Select specific columns for PCA (numeric columns only)
+Group1_cleaned_selected <- Group1_cleaned_capped %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+
+# Step 8: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_cleaned_selected, center = TRUE, scale. = TRUE)
+
+# Step 9: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+pca_scores_B <- pca_result1$x
+
+
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+                           names.arg = paste0("PC", 1:25), 
+                           las = 2, 
+                           col = "steelblue", 
+                           main = "Scree Plot of PCA",
+                           xlab = "Principal Components",
+                           ylab = "Percentage of Variance Explained",
+                           ylim = c(0, 70))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+  ggtitle("Contribution of Variables to PC1") # For PC1
+
+
+##=======================================================
+##PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+View(Group1_cleaned_capped)
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned_capped[, 33:47]
+View(pd_data1)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Chronic condition) + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 2: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned_capped%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE
+         
+  )
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_B <- as.data.frame(pca_scores_B)
+
+colnames(pca_scores_B)
+
+# Rename the column name
+pca_scores_B <- pca_scores_B %>%
+  rename(
+    PC1_B = PC1,   PC2_B = PC2,   PC3_B = PC3,   PC4_B = PC4,   PC5_B = PC5,
+    PC6_B = PC6,   PC7_B = PC7,   PC8_B = PC8,   PC9_B = PC9,   PC10_B = PC10,
+    PC11_B = PC11, PC12_B = PC12, PC13_B = PC13, PC14_B = PC14, PC15_B = PC15,
+    PC16_B = PC16, PC17_B = PC17, PC18_B = PC18, PC19_B = PC19, PC20_B = PC20,
+    PC21_B = PC21, PC22_B = PC22, PC23_B = PC23, PC24_B = PC24, PC25_B = PC25
+  )
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+pca_subset1 <- pca_scores_B[, c("PC1_B", "PC2_B", "PC3_B", "PC4_B")]
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset1, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+Group1_with_pca$SRVC_CTGRY <- cms_data_filtered$SRVC_CTGRY
+
+Group1_with_pca$SRVC_CTGRY <- as.factor(Group1_with_pca$SRVC_CTGRY)
+
+##For filtering service category, run this command!!!
+filtered_Group1_with_pca <- Group1_with_pca %>%
+  filter(SRVC_CTGRY == "LTC")
+
+filtered_no_srvc <- filtered_Group1_with_pca %>%
+  select(-SRVC_CTGRY)
+##filtered_no_srvc <- Group1_with_pca
+####checking missing values and rectify ############
+# Check for missing values
+missing_values <- sum(is.na(filtered_no_srvc))
+if (missing_values > 0) {
+  print(paste("There are", missing_values, "missing values in the dataset."))
+}
+
+# Check the structure of the data
+str(filtered_no_srvc)
+
+# Check for correlations
+correlations <- cor(filtered_no_srvc)
+print(correlations)
+
+# Identify linear dependencies (if using caret package)
+# install.packages("caret") # Uncomment if caret is not installed
+library(caret)
+linear_combos <- findLinearCombos(as.data.frame(filtered_no_srvc))
+print(linear_combos)
+
+# Remove problematic variables if necessary
+# filtered_no_srvc <- filtered_no_srvc[, -c(index_of_problematic_variable)]
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(
+  TOT_MDCR_PYMT_AMT ~ .,
+  data = filtered_no_srvc,
+  method = "exhaustive",
+  really.big = TRUE
+)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get list of Adj_R2 and AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+# Load necessary libraries
+library(dplyr)
+
+# Step 1: Identify the best model based on adjusted R-squared
+best_model_index <- which.max(model_eval$Adj_R2)  # Get the index of the best model
+best_model_vars <- names(which(models_matrix[best_model_index, -1]))  # Get variable names
+
+# Step 2: Create a formula for the linear regression model
+formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(best_model_vars, collapse = " + "))
+linear_model <- lm(as.formula(formula_str), data = filtered_no_srvc)
+
+# Step 3: Summary of the Linear Regression Model
+summary(linear_model)
+
+# Step 4: Split the data into training and testing sets
+set.seed(1)  # For reproducibility
+train_indices <- sample(1:nrow(filtered_no_srvc), size = 0.7 * nrow(filtered_no_srvc))  # 70% for training
+train_data <- filtered_no_srvc[train_indices, ]
+test_data <- filtered_no_srvc[-train_indices, ]
+
+# Step 5: Fit the linear regression model using the training data
+linear_model_train <- lm(as.formula(formula_str), data = train_data)
+
+# Step 6: Make predictions on the training data
+train_predictions <- predict(linear_model_train, newdata = train_data)
+
+# Step 7: Make predictions on the test data
+test_predictions <- predict(linear_model_train, newdata = test_data)
+
+# Step 8: Evaluate the model's performance on the training set
+# Calculate RMSE for Training Set
+rmse_train <- sqrt(mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2))
+
+# Calculate MAE for Training Set
+mae_train <- mean(abs(train_data$TOT_MDCR_PYMT_AMT - train_predictions))
+
+# Calculate MSE for Training Set
+mse_train <- mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2)
+
+# Calculate R-squared for Training Set
+r_squared_train <- 1 - (sum((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2) / 
+                          sum((train_data$TOT_MDCR_PYMT_AMT - mean(train_data$TOT_MDCR_PYMT_AMT))^2))
+
+# Step 9: Evaluate the model's performance on the test set
+# Calculate RMSE for Test Set
+rmse_test <- sqrt(mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2))
+
+# Calculate MAE for Test Set
+mae_test <- mean(abs(test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+# Calculate MSE for Test Set
+mse_test <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2)
+
+#Calculate ME For Test Set
+me_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+#Calculate MPE for Test Set
+mpe_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT) * 100
+
+#Calculate MAPE for Test set
+mape_val <- mean(abs((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT)) * 100
+
+
+# Calculate R-squared for Test Set
+r_squared_test <- 1 - (sum((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2) / 
+                         sum((test_data$TOT_MDCR_PYMT_AMT - mean(test_data$TOT_MDCR_PYMT_AMT))^2))
+
+## Calculate Adjusted R-squared for Test Set
+n_test <- nrow(test_data)  # Number of observations in the test set
+p_test <- length(coef(linear_model_train)) - 1  # Number of predictors (subtracting 1 for the intercept)
+
+adj_r_squared_test <- 1 - (1 - r_squared_test) * ((n_test - 1) / (n_test - p_test - 1))
+
+
+# Step 10: Print the evaluation metrics
+cat("Training Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_train, "\n")
+cat("Mean Absolute Error (MAE):", mae_train, "\n")
+cat("Mean Squared Error (MSE):", mse_train, "\n")
+cat("R-squared:", r_squared_train, "\n\n")
+
+cat("Test Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_test, "\n")
+cat("Mean Absolute Error (MAE):", mae_test, "\n")
+cat("Mean Squared Error (MSE):", mse_test, "\n")
+cat("R-squared:", r_squared_test, "\n")
+cat("Adjusted R-squared:", adj_r_squared_test, "\n")  
+cat("ME:", me_val, "\n")
+cat("mpe_val:", mpe_val, "\n")
+cat("mape_val:", mape_val, "\n")
+
+# Step 11: Diagnostic plots for the linear model
+par(mfrow = c(2, 2))  # Set up the plotting area
+plot(linear_model_train)  # Diagnostic plots for the linear model
+#****************************************************************************************************************
+#FOR IRF SERVICE CATEGORY
+##=======================================================
+##Clean the data
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+#Read the data file into cms_data data frame
+cms_data <- read.csv(file = "Group1_cms_dataset.csv", 
+                     header = T, as.is = T)
+
+# Assuming Group1 is already loaded
+# Check the first few rows of the dataset
+head(cms_data)
+# Step 3: Create filter to only include provider level data
+cms_data_filtered <- filter(cms_data, SMRY_CTGRY != "NATION" &  SMRY_CTGRY != "STATE" )
+
+# Step 2: Select specific columns for cleaning data
+Group1_selected <- cms_data_filtered%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT,
+         PRMRY_DX_INFCTN_PCT,
+         PRMRY_DX_NEOBLD_PCT,
+         PRMRY_DX_ENDONUTRMET_PCT,
+         PRMRY_DX_MNTBEHNEUDIS_PCT,
+         PRMRY_DX_NERVSYSTM_PCT,
+         PRMRY_DX_ENTSYS_PCT,
+         PRMRY_DX_CIRCSYSTM_PCT,
+         PRMRY_DX_RSPSYSTM_PCT,
+         PRMRY_DX_DIGSYSTM_PCT,
+         PRMRY_DX_SKNMUSSYSTM_PCT,
+         PRMRY_DX_GUSYSTM_PCT,
+         PRMRY_DX_PRGPERICONG_PCT,
+         PRMRY_DX_SXILLDEF_PCT,
+         PRMRY_DX_INJPOIS_PCT,
+         PRMRY_DX_HLTHSRV_PCT,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS
+  )
+
+# Convert all columns to character to handle "N/A" and "*" as text
+Group1_cleaned <- Group1_selected %>%
+  mutate(across(everything(), as.character)) %>%
+  
+  # Replace "N/A" with "0"
+  mutate(across(everything(), ~ ifelse(. == "N/A", "0", .))) %>%
+  
+  # Replace "*" with NA temporarily to calculate mean
+  mutate(across(everything(), ~ ifelse(. == "*", NA, .))) %>%
+  
+  # Convert all columns to numeric
+  mutate(across(everything(), as.numeric)) %>%
+  
+  # Replace NA (from "*") with column mean
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# View the structure
+str(Group1_cleaned)
+
+# Check for any remaining NAs (should be 0 if everything was replaced properly)
+colSums(is.na(Group1_cleaned))
+
+# Quick summary of a few columns
+summary(Group1_cleaned$TOT_MDCR_PYMT_AMT)
+summary(Group1_cleaned$BENE_CC_BH_ANXIETY_V1_PCT)
+##=========================================================================================
+## handling outliers 
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming Group1_cleaned is already created and contains your cleaned data
+
+# Step 1: Identify Outliers using Z-scores
+# Calculate Z-scores for the relevant numeric columns
+z_scores <- scale(Group1_cleaned)
+
+# Identify outliers (Z-score > 3 or < -3)
+outliers <- abs(z_scores) > 3
+
+# Step 2: Visualize Outliers with Boxplots
+# Create boxplots for key variables to visualize outliers
+ggplot(Group1_cleaned, aes(y = TOT_MDCR_PYMT_AMT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Total Medicare Payment Amount", y = "Total Medicare Payment Amount")
+
+ggplot(Group1_cleaned, aes(y = BENE_CC_BH_ANXIETY_V1_PCT)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Anxiety Percentage", y = "Anxiety Percentage")
+
+# Step 3: Handle Outliers
+# Option 1: Remove Outliers
+# Create a cleaned dataset without outliers
+####Group1_cleaned_no_outliers <- Group1_cleaned[!rowSums(outliers), ]
+
+# Option 2: Cap Outliers
+# Calculate the 1st and 99th percentiles
+lower_bound <- apply(Group1_cleaned, 2, quantile, 0.01)
+upper_bound <- apply(Group1_cleaned, 2, quantile, 0.99)
+
+# Cap the outliers
+Group1_cleaned_capped <- Group1_cleaned
+for (i in 1:ncol(Group1_cleaned)) {
+  Group1_cleaned_capped[[i]] <- pmin(pmax(Group1_cleaned[[i]], lower_bound[i]), upper_bound[i])
+}
+
+# Option 3: Transform Outliers
+# Apply log transformation to reduce the impact of outliers
+####Group1_cleaned_transformed <- Group1_cleaned
+####Group1_cleaned_transformed$TOT_MDCR_PYMT_AMT <- log1p(Group1_cleaned$TOT_MDCR_PYMT_AMT)  # log(1 + x) to handle zero values
+
+# Step 4: Check the structure of the cleaned dataset
+####str(Group1_cleaned_no_outliers)  # If you removed outliers
+# or
+str(Group1_cleaned_capped)  # If you capped outliers
+# or
+####str(Group1_cleaned_transformed)  # If you transformed 
+##=======================================================
+##PCA for chronic condition from data dictionary variable count 31 to 55
+
+# Step 2: Select specific columns for PCA (numeric columns only)
+Group1_cleaned_selected <- Group1_cleaned_capped %>%
+  select(BENE_CC_BH_ADHD_OTHCD_V1_PCT, 
+         BENE_CC_BH_ALCOHOL_DRUG_V1_PCT, 
+         BENE_CC_BH_ALZ_NONALZDEM_V2_PCT, 
+         BENE_CC_BH_ANXIETY_V1_PCT, 
+         BENE_CC_BH_BIPOLAR_V1_PCT, 
+         BENE_CC_BH_DEPRESS_V1_PCT, 
+         BENE_CC_BH_MOOD_V2_PCT, 
+         BENE_CC_BH_PD_V1_PCT, 
+         BENE_CC_BH_PTSD_V1_PCT, 
+         BENE_CC_BH_SCHIZO_OTHPSY_V1_PCT,
+         BENE_CC_BH_TOBACCO_V1_PCT,
+         BENE_CC_PH_AFIB_V2_PCT,
+         BENE_CC_PH_ARTHRITIS_V2_PCT,
+         BENE_CC_PH_ASTHMA_V2_PCT,
+         BENE_CC_PH_CANCER6_V2_PCT,
+         BENE_CC_PH_CKD_V2_PCT,
+         BENE_CC_PH_COPD_V2_PCT,
+         BENE_CC_PH_DIABETES_V2_PCT,
+         BENE_CC_PH_HF_NONIHD_V2_PCT,
+         BENE_CC_PH_HYPERLIPIDEMIA_V2_PCT,
+         BENE_CC_PH_HYPERTENSION_V2_PCT,
+         BENE_CC_PH_ISCHEMICHEART_V2_PCT,
+         BENE_CC_PH_OSTEOPOROSIS_V2_PCT,
+         BENE_CC_PH_PARKINSON_V2_PCT,
+         BENE_CC_PH_STROKE_TIA_V2_PCT)
+
+# Step 8: Perform PCA on the cleaned data
+pca_result1 <- prcomp(Group1_cleaned_selected, center = TRUE, scale. = TRUE)
+
+# Step 9: Check the summary of the PCA results
+summary(pca_result1)
+
+loadings <- pca_result1$rotation
+pca_scores_B <- pca_result1$x
+
+
+# Create a plot of the cumulative proportion of variance
+explained_variance <- summary(pca_result1)$importance[2,]
+cumulative_variance <- cumsum(explained_variance)
+
+# Plot the cumulative variance
+plot(cumulative_variance, type = "b", 
+     main = "Cumulative Proportion of Variance Explained",
+     xlab = "Number of Principal Components",
+     ylab = "Cumulative Proportion of Variance",
+     col = "blue", pch = 16)
+
+# Compute variance explained for each PC
+variance_explained <- pca_result1$sdev^2 / sum(pca_result1$sdev^2) * 100
+
+# Create a scree plot for all 25 PCs with increased y-axis limit
+barplot_heights <- barplot(variance_explained, 
+                           names.arg = paste0("PC", 1:25), 
+                           las = 2, 
+                           col = "steelblue", 
+                           main = "Scree Plot of PCA",
+                           xlab = "Principal Components",
+                           ylab = "Percentage of Variance Explained",
+                           ylim = c(0, 70))  # Increased limit to 30%
+
+# Add percentage labels on top of each bar
+text(x = barplot_heights, 
+     y = variance_explained + 1,  # Adjusting position above the bars
+     labels = round(variance_explained, 1),  # Round to 1 decimal place
+     cex = 0.8, col = "black")
+
+
+library(factoextra)
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result1, choice = "var", axes = 1, top = 10)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))+
+  ggtitle("Contribution of Variables to PC1") # For PC1
+
+
+##=======================================================
+##PCA for primary diagnosis variables from data dictionary variable count 56 to 70
+View(Group1_cleaned_capped)
+library(ggplot2) # For Visualization
+library(factoextra) #For PCA visualization
+library(dplyr)
+
+# filtering only primary diagnosis columns
+pd_data1 <- Group1_cleaned_capped[, 33:47]
+View(pd_data1)
+
+
+# Function to clean and convert to numeric
+clean_numeric <- function(x) {
+  # Replace "*" with NA
+  x <- replace(x, x == "*", NA)
+  # Convert to numeric, coercing any remaining non-numeric values to NA
+  as.numeric(x)
+}
+
+# Apply the cleaning function to all relevant columns
+pd_data_cleaned1 <- pd_data1 %>%
+  mutate(across(everything(), clean_numeric))
+
+# View the cleaned data
+View(pd_data_cleaned1)
+
+#check the datatypes of selected columns again
+sapply(pd_data_cleaned1, class)
+
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  select(where(~ sd(., na.rm = TRUE) != 0))
+
+# Replace missing value (NA) with mean of respective column
+pd_data_cleaned1 <- pd_data_cleaned1 %>%
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+#missing values 
+sum(is.na(pd_data_cleaned1)) 
+# should be no null values output should be 0
+
+pca_result2 <- prcomp(pd_data_cleaned1, center = TRUE, scale. = TRUE)
+summary(pca_result2)
+loadings <- pca_result2$rotation
+pca_scores_P <- pca_result2$x
+
+#screeplot visualization
+
+fviz_eig(pca_result2, addlabels = TRUE, ylim = c(0, 15),  ncp = 15) +
+  ggtitle("Scree plot of PCA")+
+  xlab("Principal Components") +  
+  ylab("Percentage of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(size = 12),  # Increase the size of the x-axis labels
+        axis.text.y = element_text(size = 12))
+
+
+# Contribution of variables to PC1 and PC2
+fviz_contrib(pca_result2, choice = "var", axes = 1, top = 15)+
+  ggtitle("Contribution of Variables to PC1") +  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        plot.title = element_text(hjust = 0.5)) # For PC1
+
+
+##=======================================================
+##Combine Group1_cleaned + PCA(Chronic condition) + PCA(Primary diagnosis)
+
+##Filter out beneficiary + primary
+
+# Step 2: Select specific columns(except PCA) from cleaning data
+Group1_cleaned_wo_chronic_primary <- Group1_cleaned_capped%>%
+  select(BENE_DSTNCT_CNT,
+         TOT_EPSD_STAY_CNT,
+         TOT_SRVC_DAYS,
+         TOT_MDCR_PYMT_AMT,
+         BENE_DUAL_PCT,
+         BENE_AVG_AGE,
+         BENE_AVG_RISK_SCRE,
+         TOT_PT_MNTS,
+         TOT_OT_MNTS,
+         TOT_SLP_MNTS,
+  )
+
+##Rename column name of PCA scores##
+library(dplyr)
+
+# Convert to data frame first
+pca_scores_B <- as.data.frame(pca_scores_B)
+
+colnames(pca_scores_B)
+
+# Rename the column name
+pca_scores_B <- pca_scores_B %>%
+  rename(
+    PC1_B = PC1,   PC2_B = PC2,   PC3_B = PC3,   PC4_B = PC4,   PC5_B = PC5,
+    PC6_B = PC6,   PC7_B = PC7,   PC8_B = PC8,   PC9_B = PC9,   PC10_B = PC10,
+    PC11_B = PC11, PC12_B = PC12, PC13_B = PC13, PC14_B = PC14, PC15_B = PC15,
+    PC16_B = PC16, PC17_B = PC17, PC18_B = PC18, PC19_B = PC19, PC20_B = PC20,
+    PC21_B = PC21, PC22_B = PC22, PC23_B = PC23, PC24_B = PC24, PC25_B = PC25
+  )
+
+# Convert to data frame first
+pca_scores_P <- as.data.frame(pca_scores_P)
+
+# Now you can safely rename columns
+pca_scores_P <- pca_scores_P %>%
+  rename(
+    PC1_P = PC1,
+    PC2_P = PC2,
+    PC3_P = PC3,
+    PC4_P = PC4,
+    PC5_P = PC5,
+    PC6_P = PC6,
+    PC7_P = PC7,
+    PC8_P = PC8,
+    PC9_P = PC9,
+    PC10_P = PC10,
+    PC11_P = PC11,
+    PC12_P = PC12,
+    PC13_P = PC13,
+    PC14_P = PC14,
+    PC15_P = PC15
+  )
+
+##Add PCA scores##
+pca_subset1 <- pca_scores_B[, c("PC1_B", "PC2_B", "PC3_B", "PC4_B")]
+pca_subset2 <- pca_scores_P[, c("PC1_P", "PC2_P", "PC3_P", "PC4_P", "PC5_P", "PC6_P", "PC7_P", "PC8_P", "PC9_P", "PC10_P")]
+
+Group1_with_pca <- cbind(Group1_cleaned_wo_chronic_primary, pca_subset1, pca_subset2)
+
+
+colnames(Group1_with_pca)
+
+
+##=======================================================
+##Exhaustive search
+
+install.packages("leaps")
+library(leaps)
+
+Group1_with_pca$SRVC_CTGRY <- cms_data_filtered$SRVC_CTGRY
+
+Group1_with_pca$SRVC_CTGRY <- as.factor(Group1_with_pca$SRVC_CTGRY)
+
+##For filtering service category, run this command!!!
+filtered_Group1_with_pca <- Group1_with_pca %>%
+  filter(SRVC_CTGRY == "IRF")
+
+filtered_no_srvc <- filtered_Group1_with_pca %>%
+  select(-SRVC_CTGRY)
+##filtered_no_srvc <- Group1_with_pca
+####checking missing values and rectify ############
+# Check for missing values
+missing_values <- sum(is.na(filtered_no_srvc))
+if (missing_values > 0) {
+  print(paste("There are", missing_values, "missing values in the dataset."))
+}
+
+# Check the structure of the data
+str(filtered_no_srvc)
+
+# Check for correlations
+correlations <- cor(filtered_no_srvc)
+print(correlations)
+
+# Identify linear dependencies (if using caret package)
+# install.packages("caret") # Uncomment if caret is not installed
+library(caret)
+linear_combos <- findLinearCombos(as.data.frame(filtered_no_srvc))
+print(linear_combos)
+
+# Remove problematic variables if necessary
+# filtered_no_srvc <- filtered_no_srvc[, -c(index_of_problematic_variable)]
+
+# Exhaustive search using the new dataset with PCA components
+exhaustive_search <- regsubsets(
+  TOT_MDCR_PYMT_AMT ~ .,
+  data = filtered_no_srvc,
+  method = "exhaustive",
+  really.big = TRUE
+)
+
+# Summary of the results
+summary(exhaustive_search)
+
+# Extract summary of the regsubsets object
+exhaustive_summary <- summary(exhaustive_search)
+
+# Access the adjusted R-squared for each model
+exhaustive_summary$adjr2
+
+##Refit each model to get list of Adj_R2 and AIC##
+
+library(leaps)
+library(dplyr)
+
+# Get the names of variables in the best model of each size
+models_matrix <- exhaustive_summary$which  # logical matrix of predictors
+
+# Container to store AICs
+aic_values <- numeric(nrow(models_matrix))
+
+# Loop through models
+for (i in 1:nrow(models_matrix)) {
+  # Get predictor names (excluding intercept)
+  vars <- names(which(models_matrix[i, -1]))  # -1 to skip intercept column
+  # Build formula dynamically
+  formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(vars, collapse = " + "))
+  model <- lm(as.formula(formula_str), data = Group1_with_pca)
+  aic_values[i] <- AIC(model)
+}
+
+# Combine results
+model_eval <- data.frame(
+  Model_Size = 1:nrow(models_matrix),
+  Adj_R2 = exhaustive_summary$adjr2,
+  AIC = aic_values
+)
+
+print(model_eval)
+
+
+##=======================================================
+# Load necessary libraries
+library(dplyr)
+
+# Step 1: Identify the best model based on adjusted R-squared
+best_model_index <- which.max(model_eval$Adj_R2)  # Get the index of the best model
+best_model_vars <- names(which(models_matrix[best_model_index, -1]))  # Get variable names
+
+# Step 2: Create a formula for the linear regression model
+formula_str <- paste("TOT_MDCR_PYMT_AMT ~", paste(best_model_vars, collapse = " + "))
+linear_model <- lm(as.formula(formula_str), data = filtered_no_srvc)
+
+# Step 3: Summary of the Linear Regression Model
+summary(linear_model)
+
+# Step 4: Split the data into training and testing sets
+set.seed(1)  # For reproducibility
+train_indices <- sample(1:nrow(filtered_no_srvc), size = 0.7 * nrow(filtered_no_srvc))  # 70% for training
+train_data <- filtered_no_srvc[train_indices, ]
+test_data <- filtered_no_srvc[-train_indices, ]
+
+# Step 5: Fit the linear regression model using the training data
+linear_model_train <- lm(as.formula(formula_str), data = train_data)
+
+# Step 6: Make predictions on the training data
+train_predictions <- predict(linear_model_train, newdata = train_data)
+
+# Step 7: Make predictions on the test data
+test_predictions <- predict(linear_model_train, newdata = test_data)
+
+# Step 8: Evaluate the model's performance on the training set
+# Calculate RMSE for Training Set
+rmse_train <- sqrt(mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2))
+
+# Calculate MAE for Training Set
+mae_train <- mean(abs(train_data$TOT_MDCR_PYMT_AMT - train_predictions))
+
+# Calculate MSE for Training Set
+mse_train <- mean((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2)
+
+# Calculate R-squared for Training Set
+r_squared_train <- 1 - (sum((train_data$TOT_MDCR_PYMT_AMT - train_predictions)^2) / 
+                          sum((train_data$TOT_MDCR_PYMT_AMT - mean(train_data$TOT_MDCR_PYMT_AMT))^2))
+
+# Step 9: Evaluate the model's performance on the test set
+# Calculate RMSE for Test Set
+rmse_test <- sqrt(mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2))
+
+# Calculate MAE for Test Set
+mae_test <- mean(abs(test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+# Calculate MSE for Test Set
+mse_test <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2)
+
+#Calculate ME For Test Set
+me_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions))
+
+#Calculate MPE for Test Set
+mpe_val <- mean((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT) * 100
+
+#Calculate MAPE for Test set
+mape_val <- mean(abs((test_data$TOT_MDCR_PYMT_AMT - test_predictions)/test_data$TOT_MDCR_PYMT_AMT)) * 100
+
+
+# Calculate R-squared for Test Set
+r_squared_test <- 1 - (sum((test_data$TOT_MDCR_PYMT_AMT - test_predictions)^2) / 
+                         sum((test_data$TOT_MDCR_PYMT_AMT - mean(test_data$TOT_MDCR_PYMT_AMT))^2))
+
+## Calculate Adjusted R-squared for Test Set
+n_test <- nrow(test_data)  # Number of observations in the test set
+p_test <- length(coef(linear_model_train)) - 1  # Number of predictors (subtracting 1 for the intercept)
+
+adj_r_squared_test <- 1 - (1 - r_squared_test) * ((n_test - 1) / (n_test - p_test - 1))
+
+
+# Step 10: Print the evaluation metrics
+cat("Training Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_train, "\n")
+cat("Mean Absolute Error (MAE):", mae_train, "\n")
+cat("Mean Squared Error (MSE):", mse_train, "\n")
+cat("R-squared:", r_squared_train, "\n\n")
+
+cat("Test Set Metrics:\n")
+cat("Root Mean Squared Error (RMSE):", rmse_test, "\n")
+cat("Mean Absolute Error (MAE):", mae_test, "\n")
+cat("Mean Squared Error (MSE):", mse_test, "\n")
+cat("R-squared:", r_squared_test, "\n")
+cat("Adjusted R-squared:", adj_r_squared_test, "\n")  
+cat("ME:", me_val, "\n")
+cat("mpe_val:", mpe_val, "\n")
+cat("mape_val:", mape_val, "\n")
+
+# Step 11: Diagnostic plots for the linear model
+par(mfrow = c(2, 2))  # Set up the plotting area
+plot(linear_model_train)  # Diagnostic plots for the linear model
+
+
+
+
+
+
